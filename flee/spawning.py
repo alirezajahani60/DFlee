@@ -271,14 +271,24 @@ def spawn_daily_displaced(e, t, d):
         num_spawned = 0
         flood_level = e.locations[i].attributes.get("flood_level",0)
         #print(e.time, e.locations[i].name, e.locations[i].attributes, file=sys.stderr)
+        flood_level = min(
+            4,
+            int(
+                round(
+                    flood_level *
+                    SimulationSettings.move_rules["FloodSeverityScale"]
+                )
+            )
+        )
         if flood_level > 0:
+            spawn_scale = SimulationSettings.spawn_rules["FloodSpawnScale"]
             print(e.time, e.locations[i].name, e.locations[i].attributes, int(SimulationSettings.spawn_rules["displaced_per_flood_day"][flood_level]),  file=sys.stderr)
             ## BASE RATES  
             if SimulationSettings.spawn_rules["flood_spawn_mode"] == "constant":
-                num_spawned = int(SimulationSettings.spawn_rules["displaced_per_flood_day"][flood_level]) 
+                num_spawned = int(SimulationSettings.spawn_rules["displaced_per_flood_day"][flood_level]* SimulationSettings.spawn_rules["FloodSpawnScale"]) 
 
             elif SimulationSettings.spawn_rules["flood_spawn_mode"] == "pop_ratio":
-                num_spawned = int(SimulationSettings.spawn_rules["displaced_per_flood_day"][flood_level] * e.locations[i].pop)
+                num_spawned = int(SimulationSettings.spawn_rules["displaced_per_flood_day"][flood_level] * e.locations[i].pop* SimulationSettings.spawn_rules["FloodSpawnScale"])
     
             elif SimulationSettings.spawn_rules["flood_spawn_mode"].lower() == "poisson":
                 num_spawned = np.random.poisson(int(SimulationSettings.spawn_rules["displaced_per_flood_day"][flood_level]))

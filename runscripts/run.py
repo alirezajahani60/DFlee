@@ -13,6 +13,8 @@ if __name__ == "__main__":
 
   start_date,end_time = read_period.read_sim_period("{}/sim_period.csv".format(sys.argv[1]))
 
+  start_runtime = datetime.now()
+
   if len(sys.argv)<4:
     print("Please run using: python3 run.py <your_csv_directory> <your_refugee_data_directory> <duration in days> <optional: simsettings.yml> > <output_directory>/<output_csv_filename>")
 
@@ -118,3 +120,9 @@ if __name__ == "__main__":
       output += ",{}".format(e.numIDPs())
 
     print(output)
+
+  end_runtime = datetime.now()
+  runtime_seconds = (end_runtime - start_runtime).total_seconds()
+
+  with open("runtime_seconds.txt", "w") as f:
+      f.write(str(runtime_seconds))

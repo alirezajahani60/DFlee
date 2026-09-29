@@ -54,10 +54,26 @@ def getEndPointScore(agent, endpoint, time) -> float:
     if SimulationSettings.move_rules["FloodRulesEnabled"] is True:
         #Get the current flood level of the endpoint, if flood level not set in flood_level.csv then default to zero
         flood_level = endpoint.attributes.get("flood_level",0)
+        flood_level = min(
+            4,
+            int(
+                round(
+                    flood_level *
+                    SimulationSettings.move_rules["FloodSeverityScale"]
+                )
+            )
+        )
         #print("Link:", endpoint.name, endpoint.attributes, file=sys.stderr)
         if flood_level > 0:
             #set the base equal to the flood location weight
-            base *= float(SimulationSettings.move_rules["FloodLocWeights"][flood_level])
+            base *= (
+                float(
+                    SimulationSettings.move_rules["FloodLocWeights"][flood_level]
+                )
+                **
+                SimulationSettings.move_rules["FloodLocScale"]
+            )
+
             #otherwise base score is unaffected by flooding
 
 
@@ -349,10 +365,29 @@ def calculateMoveChance(a, ForceTownMove: bool, time) -> float:
     if SimulationSettings.move_rules["FloodRulesEnabled"] is True:
         #Get the current flood level of the agents location, if flood level not set in flood_level.csv then default to zero
         flood_level = a.location.attributes.get("flood_level",0)
+
+        flood_level = min(
+            4,
+            int(
+                round(
+                    flood_level *
+                    SimulationSettings.move_rules["FloodSeverityScale"]
+                )
+            )
+        )
         
         if flood_level > 0.0:
             #set the base equal to the flood location weight
-            movechance = float(SimulationSettings.move_rules["FloodMovechances"][flood_level])
+            movechance = (
+                float(
+                    SimulationSettings.move_rules["FloodMovechances"][flood_level]
+                )
+                **
+                SimulationSettings.move_rules["FloodMoveScale"]
+            )
+
+            movechance = min(1.0, movechance)
+           
             #otherwise base movechance is unaffected by flooding
             #print(f"flood_level: {flood_level}, movechance: {movechance}")
 

@@ -150,6 +150,8 @@ class InputGeography:
             if SimulationSettings.spawn_rules["flood_driven_spawning"] is True:
                 self.ReadAttributeInputCSV("flood_level","int",SimulationSettings.FloodLevelInputFile)
                 self.ReadAttributeInputCSV("forecast_flood_levels","int",SimulationSettings.FloodLevelInputFile)
+                if len(SimulationSettings.FloodLevelInputFile) > 0:
+                    self.ReadConflictInputCSV(SimulationSettings.FloodLevelInputFile)
 
             elif SimulationSettings.move_rules["FloodRulesEnabled"] is False:
                 #if SimulationSettings.spawn_rules["conflict_driven_spawning"] is True:

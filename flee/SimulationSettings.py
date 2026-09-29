@@ -151,7 +151,7 @@ class SimulationSettings:
 
         # Setting defaults, to be overwritten right below when needed.
         SimulationSettings.spawn_rules["conflict_driven_spawning"] = False # Conflicts provide a direct push factor.
-        SimulationSettings.spawn_rules["flood_driven_spawning"] = False # Flood provide a direct push factor.
+        SimulationSettings.spawn_rules["flood_driven_spawning"] = True # Flood provide a direct push factor.
 
         spawn_type = "conflict"
         if SimulationSettings.spawn_rules["flood_zone_spawning_only"] is True:
@@ -212,11 +212,11 @@ class SimulationSettings:
 
         # most number of km that we expect refugees to traverse per time step (30
         # km/h * 12 hours).
-        SimulationSettings.move_rules["MaxMoveSpeed"] = float(fetchss(dpr,"max_move_speed", 360.0))
+        SimulationSettings.move_rules["MaxMoveSpeed"] = float(fetchss(dpr,"max_move_speed", 90.0))
         
         # most number of km that we expect refugees to traverse per time step on
         # foot (3.5 km/h * 10 hours).
-        SimulationSettings.move_rules["MaxWalkSpeed"] = float(fetchss(dpr,"max_walk_speed", 35.0))
+        SimulationSettings.move_rules["MaxWalkSpeed"] = float(fetchss(dpr,"max_walk_speed", 10.0))
 
         # most number of km that we expect refugees to traverse per time step on
         # boat/walk to cross river (2 km/h * 10 hours).
@@ -262,8 +262,8 @@ class SimulationSettings:
 
         # A switch to enable weighting of distance to home location for different locations.
         # As well as a power factor to adjust the weight of it. Default is sqrt scaling of distance.
-        SimulationSettings.move_rules["StayCloseToHome"] = bool(fetchss(dpr,"stay_close_to_home",False))
-        SimulationSettings.move_rules["HomeDistancePower"] = float(fetchss(dpr,"home_distance_power",0.5))
+        SimulationSettings.move_rules["StayCloseToHome"] = bool(fetchss(dpr,"stay_close_to_home",True))
+        SimulationSettings.move_rules["HomeDistancePower"] = float(fetchss(dpr,"home_distance_power",2))
 
 
 
@@ -308,6 +308,28 @@ class SimulationSettings:
           # FloodLocWeights *multiply* existing location weights when flood level is higher than 0.
           SimulationSettings.move_rules["FloodLocWeights"] = fetchss(dpf,"flood_loc_weights", None) # Expect an array or dict
           print("Flood Location Weights set to:", SimulationSettings.move_rules["FloodLocWeights"], file=sys.stderr)
+
+          #New DFlee SA parameters
+          SimulationSettings.spawn_rules["FloodSpawnScale"] = float(fetchss(dpf, "flood_spawn_scale", 1.0))
+
+          SimulationSettings.move_rules["FloodMoveScale"] = float(fetchss(dpf, "flood_move_scale", 1.0))
+
+          SimulationSettings.move_rules["FloodLocScale"] = float(fetchss(dpf, "flood_loc_scale", 1.0))
+
+          SimulationSettings.move_rules["FloodSeverityScale"] = float(fetchss(dpf, "flood_severity_scale", 1.0))
+
+          print(
+              "Flood scales:",
+              SimulationSettings.spawn_rules["FloodSpawnScale"],
+              SimulationSettings.move_rules["FloodMoveScale"],
+              SimulationSettings.move_rules["FloodLocScale"],
+              file=sys.stderr
+          )
+          print(
+              "FloodSpawnScale:",
+              SimulationSettings.spawn_rules["FloodSpawnScale"],
+              file=sys.stderr
+          )
           
           # FloodLinkWeights *multiply* existing link weights when flood level is higher than 0.
           SimulationSettings.move_rules["FloodLinkWeights"] = fetchss(dpf,"flood_link_weights", None) # Expect an array or dict
