@@ -7,12 +7,15 @@ import numpy as np
 import flee.postprocessing.analysis as a
 import sys
 from flee.SimulationSettings import SimulationSettings
+from time import perf_counter
 
 from datetime import datetime, timedelta
 
 if __name__ == "__main__":
 
   start_date,end_time = read_period.read_sim_period("{}/sim_period.csv".format(sys.argv[1]))
+
+  start_runtime = datetime.now()
 
   if len(sys.argv)<4:
     print("Please run using: python3 run.py <your_csv_directory> <your_refugee_data_directory> <duration in days> <optional: simsettings.yml> > <output_directory>/<output_csv_filename>")
@@ -60,9 +63,10 @@ if __name__ == "__main__":
       output_header_string += "%s sim,%s data,%s error," % (lm[l].name, lm[l].name, lm[l].name)
 
   output_header_string += "Total error,refugees in camps (UNHCR),total refugees (simulation),raw UNHCR refugee count,refugees in camps (simulation),refugee_debt"
+  output_header_string += ",displaced_from_origin,displaced_from_origin_pct"
 
   if SimulationSettings.log_levels["idp_totals"] > 0:
-      output += ",total IDPs".format(e.numIDPs())
+      output_header_string += ",total IDPs"
 
   if e.getRankN(0):
       print(output_header_string)
@@ -70,6 +74,12 @@ if __name__ == "__main__":
   # Set up a mechanism to incorporate temporary decreases in refugees
   refugee_debt = 0
   refugees_raw = 0 #raw (interpolated) data from TOTAL UNHCR refugee count only.
+
+  wallclock_start = perf_counter()
+
+  checkpoint_steps = [5, 10, 15, 20]
+
+  checkpoint_times = {}
 
   for t in range(0,end_time):
     
@@ -82,6 +92,28 @@ if __name__ == "__main__":
 
     e.enact_border_closures(t)
     e.evolve()
+
+    displaced_from_origin = 0
+
+    for agent in e.agents:
+
+        if hasattr(agent.location, "endpoint"):
+
+            # travelling on a link
+            current_loc = agent.location.endpoint
+
+        else:
+
+            # standing in a location
+            current_loc = agent.location
+
+        if current_loc != agent.home_location:
+            displaced_from_origin += 1
+
+
+    displaced_from_origin_pct = (
+        displaced_from_origin / float(e.numAgents())
+    )
 
     #Calculation of error terms
     errors = []
@@ -113,10 +145,18 @@ if __name__ == "__main__":
     for i in range(0,len(errors)):
       output += ",%s,%s,%s" % (lm[camp_locations[i]].numAgents, loc_data[i], errors[i])
 
+
     if refugees_raw>0:
       output += ",%s,%s,%s,%s,%s,%s" % (float(np.sum(abs_errors))/float(refugees_raw), int(sum(loc_data)), e.numAgents(), refugees_raw, refugees_in_camps_sim, refugee_debt)
+      #output += ",{}".format(displaced_from_origin)
+      #output += ",{}".format(displaced_from_origin_pct)
     else:
       output += ",0.0,0,{},0,{},0".format(e.numAgents(), refugees_in_camps_sim)
+      #output += ",{}".format(displaced_from_origin)
+      #output += ",{}".format(displaced_from_origin_pct)
+
+    output += ",{}".format(displaced_from_origin)
+    output += ",{}".format(displaced_from_origin_pct)
 
     if SimulationSettings.log_levels["idp_totals"] > 0:
       output += ",{}".format(e.numIDPs())
@@ -124,3 +164,37 @@ if __name__ == "__main__":
     if e.getRankN(t):
         print(output)
 
+    current_step = t + 1
+
+    if current_step in checkpoint_steps:
+
+        elapsed = (
+            perf_counter()
+            - wallclock_start
+        )
+
+
+  with open(
+      "runtime_checkpoints.csv",
+      "w"
+  ) as f:
+
+      f.write(
+          "timesteps,"
+          "wallclock_seconds\n"
+      )
+
+      for step in sorted(
+          checkpoint_times.keys()
+      ):
+
+          f.write(
+              f"{step},"
+              f"{checkpoint_times[step]:.6f}\n"
+          )
+
+  end_runtime = datetime.now()
+  runtime_seconds = (end_runtime - start_runtime).total_seconds()
+
+  with open("runtime_seconds.txt", "w") as f:
+      f.write(str(runtime_seconds))
