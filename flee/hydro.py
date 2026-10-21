@@ -23,7 +23,9 @@ Entrapment (Section 5.3) is logged per step and mode: agents at a location
 with flood level >= entrapment_level that cannot reach a location below that
 level through links open for their mode within the awareness range.
 
-Only the serial Ecosystem (flee.py) is supported; pflee is not hooked.
+Works with the serial Ecosystem (flee.py) and with pflee: under MPI every
+rank holds the full network and its own share of agents, so per-agent rules
+run unchanged and the entrapment counts are summed over ranks.
 """
 from __future__ import annotations
 
@@ -256,7 +258,13 @@ class _Hydro:
             frontier = nxt
         return False
 
-    def record(self, e):
+    def record(self, e, reduce=None, write=True):
+        """Log entrapment for this step.
+
+        ``reduce``: optional function summing a numpy array over MPI ranks
+        (pflee passes MPIManager.CalcCommWorldTotal); ``write``: whether this
+        process writes the log (rank 0 only under pflee).
+        """
         t = e.time
         depth = int(round(SimulationSettings.move_rules.get("AwarenessLevel", 1)))
         counts = {m: [0, 0] for m in self.mode_names}   # [in_flooded, entrapped]
@@ -274,6 +282,13 @@ class _Hydro:
                 cache[key] = self._can_escape(a.location, m, t, depth)
             if not cache[key]:
                 counts[m][1] += 1
+        if reduce is not None:
+            import numpy as np
+            flat = np.array([v for m in self.mode_names for v in counts[m]], dtype="i")
+            flat = reduce(flat)
+            counts = {m: [int(flat[2 * i]), int(flat[2 * i + 1])] for i, m in enumerate(self.mode_names)}
+        if not write:
+            return
         mode_flag = "w" if not self._log_header_written else "a"
         with open(self.entrap_log, mode_flag, newline="") as f:
             w = csv.writer(f)
