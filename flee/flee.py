@@ -14,6 +14,7 @@ import flee.moving as moving
 import flee.spawning as spawning
 import flee.scoring as scoring
 from flee import hydro
+from flee import capacity
 
 if os.getenv("FLEE_TYPE_CHECK") is not None and os.environ["FLEE_TYPE_CHECK"].lower() == "true":
     from beartype import beartype as check_args_type
@@ -120,7 +121,15 @@ class Person:
         """
         for i in range(0, len(e.locationNames)):
             if e.locationNames[i] == self.route[-1]:
-                if e.locations[i].camp and moving.getCapMultiplier(e.locations[i],1) < 0.5:
+                loc = e.locations[i]
+                if capacity.enabled():
+                    # Full only when the agents already there fill it. Reservations are
+                    # left out, so the agent's own reservation cannot turn it away, and
+                    # the threshold matches route choice, which allows a destination
+                    # until it is full.
+                    cap = loc.capacity * float(SimulationSettings.move_rules["CapacityScaling"])
+                    return bool(cap >= 1 and loc.numAgents >= cap)
+                if loc.camp and moving.getCapMultiplier(loc,1) < 0.5:
                     #print(e.time, e.locationNames[i], self.route[-1], file=sys.stderr)
                     return True
                 else: 
@@ -128,7 +137,7 @@ class Person:
         print(f"Error: camp {self.route[-1]} not found in check_dest_is_full_camp", file=sys.stderr)
         sys.exit()
     
-    def take_next_step(self,e):
+    def take_next_step(self, e, _replanned: bool = False):
         """
         Summary:
             Takes the next step on the agent's route.
@@ -146,6 +155,17 @@ class Person:
             if l.endpoint.name == self.route[0]:
                 # Check if the destination camp is full, flooded. If so, remove the route and return `None`.
                 if self.check_dest_is_full_camp(e):
+                    if capacity.enabled():
+                        # Capacity rules: give up the reservation and choose again from
+                        # here, rather than stopping at a stop the agent never chose.
+                        capacity.get().release(self.route[-1])
+                        self.route = []
+                        if not _replanned:
+                            self.route = moving.selectRoute(self, time=e.time) or []
+                            if len(self.route) > 0:
+                                capacity.get().commit(self.route[-1])
+                                return self.take_next_step(e, _replanned=True)
+                        return None
                     self.route = []
                     return None
                 # Otherwise, remove the first link from the route and return the next link.
@@ -153,6 +173,8 @@ class Person:
                 return l
 
         # Link has vanished, remove route.
+        if capacity.enabled() and len(self.route) > 0:
+            capacity.get().release(self.route[-1])
         self.route = []
         return None
 
@@ -174,6 +196,9 @@ class Person:
         if self.travelling is False:
             # Calculate the agent's move chance.
             movechance = moving.calculateMoveChance(self, ForceTownMove, time)
+            # Capacity rules: an agent part-way along its route keeps going.
+            if capacity.enabled() and len(self.route) > 0 and capacity.get().continue_en_route:
+                movechance = 1.0
             #if self.location.town and ForceTownMove: # called through evolveMore
             #    movechance = 1.0
             #else: # called first time in loop
@@ -189,12 +214,17 @@ class Person:
                 # Hydro rules: drop a planned route whose next link is closed for this agent's mode.
                 if hydro.enabled() and len(self.route) > 0:
                     if hydro.get().link_closed(self, self.location.name, self.route[0], time):
+                        if capacity.enabled():
+                            capacity.get().release(self.route[-1])
                         self.route = []
 
                 # If the agent does not have an existing route, then plan a new route.
                 if len(self.route) == 0:
                     # Determine which route to take
                     self.route = moving.selectRoute(self, time=time)
+                    # Capacity rules: reserve a place at the chosen destination at once.
+                    if capacity.enabled() and self.route:
+                        capacity.get().commit(self.route[-1])
 
                 # No accessible route (e.g. all links closed for this mode): stay in place.
                 if self.route is None or len(self.route) == 0:
@@ -230,6 +260,10 @@ class Person:
                 h = hydro.get()
                 # A link that closes for this agent's mode while it is on it: turn back.
                 if h.link_closed(self, self.location.startpoint.name, self.location.endpoint.name, time):
+                    if capacity.enabled():
+                        d = capacity.destination(self)
+                        if d is not None:
+                            capacity.get().release(d)
                     self.route = []
                     self.handle_travel(self.location.startpoint, travelling=False)
                     return
@@ -279,6 +313,10 @@ class Person:
 
                     # update location (which is on a link) to link endpoint
                     self.handle_travel(self.location.endpoint, travelling=False)
+
+                    # Capacity rules: the reservation ends when the final destination is reached.
+                    if capacity.enabled() and len(self.route) == 0:
+                        capacity.get().arrived(self.location.name)
 
                     if SimulationSettings.log_levels["camp"] > 0:
                         if self.location.camp is True:
@@ -1673,6 +1711,9 @@ class Ecosystem:
 
         if hydro.enabled():
             hydro.get().bind(self)
+
+        if capacity.enabled():
+            capacity.get().bind(self)
         
         # update location scores
         for loc in self.locations:

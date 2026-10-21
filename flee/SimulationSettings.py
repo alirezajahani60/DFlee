@@ -33,6 +33,7 @@ class SimulationSettings:
     move_rules = {} # ABM movement rules
     optimisations = {} # Settings to improve runtime performance
     hydro_rules = {} # Hydrodynamically informed movement rules (flee/hydro.py)
+    capacity_rules = {} # Capacity reservations and host capacities (flee/capacity.py)
 
     sqrt_ten = 3.16227766017  # square root of ten (10^0.5).
 
@@ -100,6 +101,7 @@ class SimulationSettings:
         SimulationSettings.ConflictInputFile = fetchss(dp,"conflict_input_file","")
         SimulationSettings.FloodLevelInputFile = fetchss(dp,"flood_level_input_file","")
         SimulationSettings.hydro_rules = fetchss(dp,"hydro_rules",{}) or {}
+        SimulationSettings.capacity_rules = fetchss(dp,"capacity_rules",{}) or {}
 
         print("YAML:", dp, file=sys.stderr)
 
