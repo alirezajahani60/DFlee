@@ -38,6 +38,13 @@ def updateLocationScore(time: int, loc) -> None:
     if loc.camp or loc.idpcamp is True:
         score *= SimulationSettings.move_rules["CampWeight"] 
 
+    # Optional static attractiveness of a location (location_weight column in
+    # locations.csv), e.g. a customary or designated evacuation site that people
+    # know and head for. Absent by default, so scores are unchanged.
+    lw = loc.attributes.get("location_weight", "")
+    if lw not in ("", None):
+        score *= float(lw)
+
     #score multiplier for conflict
     if loc.conflict > 0.0: 
         #score takes the conflict weight to the power of the conflict decay multiplier

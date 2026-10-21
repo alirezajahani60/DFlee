@@ -146,3 +146,26 @@ def test_replan_when_destination_fills_on_the_way():
     link = a.take_next_step(e)
     assert link is not None and link.endpoint.name == "A"   # the only neighbour with room
     assert e.locations[2].pending_arrivals == 0             # reservation at C released
+
+
+def test_host_capacity_column_overrides_factor():
+    e = _world()
+    e.locations[2].attributes = {"host_capacity": "7"}   # addLocation shares one default dict
+    SimulationSettings.capacity_rules = {"enabled": True, "host_capacity": {"factor": 0.5}}
+    capacity.reset()
+    capacity.get().bind(e)
+    assert e.locations[2].capacity == 7       # column, not 0.5 * 40
+    assert e.locations[0].capacity == 500     # town A: factor 0.5 * 1000
+
+
+def test_location_weight_attribute_scales_score():
+    from flee import scoring
+    SimulationSettings.ReadFromYML("empty.yml")
+    e = flee.Ecosystem()
+    a = e.addLocation("A", location_type="town", pop=10, attributes={})
+    b = e.addLocation("B", location_type="town", pop=10, attributes={"location_weight": "4"})
+    c = e.addLocation("C", location_type="town", pop=10, attributes={"location_weight": ""})
+    for loc in (a, b, c):
+        scoring.updateLocationScore(0, loc)
+    assert b.scores[1] == pytest.approx(4 * a.scores[1])
+    assert c.scores[1] == a.scores[1]

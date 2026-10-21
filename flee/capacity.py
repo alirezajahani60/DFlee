@@ -27,6 +27,9 @@ Rules
    number of displaced agents they can host. ``people_per_agent`` converts
    populations given in people when each agent stands for several people;
    leave it at 1 if populations are already scaled (``hasten``).
+   A ``host_capacity`` column in locations.csv (agents) sets the capacity of a
+   non-camp location directly and takes precedence over the factor, e.g. to
+   count only the dry part of a partly flooded town.
 3. ``continue_en_route`` (default true). An agent that stopped part-way along
    its route (it ran out of travel time in the previous step) moves on with
    probability 1 instead of the stop's move chance. Otherwise agents passing
@@ -67,10 +70,14 @@ class _Capacity:
 
     # ------------------------------------------------------------- set-up
     def _set_host_capacities(self, e):
-        if self.host_factor <= 0:
-            return
         for loc in e.locations:
-            if loc.camp or loc.capacity > 0 or loc.pop <= 0:
+            if loc.camp or loc.capacity > 0:
+                continue
+            given = str(loc.attributes.get("host_capacity", "")).strip()
+            if given not in ("", "nan", "None"):
+                loc.capacity = max(1, int(round(float(given))))
+                continue
+            if self.host_factor <= 0 or loc.pop <= 0:
                 continue
             kinds = []
             if loc.flood_zone:
