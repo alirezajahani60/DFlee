@@ -120,7 +120,7 @@ def getEndPointScore(agent, endpoint, time) -> float:
                       # if it's not zero, then we need to modify the base forecast value, otherwise leave the base as it will zero.
                       if forecast_flood_level > 0.0: 
                         #get the endpoint locations current flood level weight based on that flood level.
-                        forecast_flood_level_weight = lm.interp(SimulationSettings.move_rules["FloodLocWeights"], flood_level)
+                        forecast_flood_level_weight = lm.interp(SimulationSettings.move_rules["FloodLocWeights"], forecast_flood_level)
                         
                         #get the current flood forecaster weight e.g. how important the current day is in the forecast
                         flood_forecaster_weight = float(SimulationSettings.move_rules["FloodForecasterWeights"][forecast_day])
