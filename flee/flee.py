@@ -14,6 +14,7 @@ from flee.Diagnostics import write_agents, write_links
 from flee.SimulationSettings import SimulationSettings
 from flee import moving, spawning, scoring, demographics
 from flee import capacity
+from flee import hydro
 
 if os.getenv("FLEE_TYPE_CHECK") is not None and os.environ["FLEE_TYPE_CHECK"].lower() == "true":
     from beartype import beartype as check_args_type
@@ -296,6 +297,13 @@ class Person:
     
             # If the outcome is less than the move chance, then the agent moves
             if outcome < movechance:
+                # Hydro rules: drop a planned route whose next link is closed for this agent's mode.
+                if hydro.enabled() and len(self.route) > 0:
+                    if hydro.get().link_closed(self, self.location.name, self.route[0], time):
+                        if capacity.enabled():
+                            capacity.get().release(self.route[-1])
+                        self.route = []
+
                 # If the agent does not have an existing route, then plan a new route
                 if len(self.route) == 0:
                     # System 2 route planning: use pre-calculated route if available
@@ -309,7 +317,7 @@ class Person:
                     if capacity.enabled() and self.route:
                         capacity.get().commit(self.route[-1])
 
-                # No accessible route (e.g. no destination with room): stay in place.
+                # No accessible route (e.g. all links closed for this mode, or no destination with room): stay in place.
                 if self.route is None or len(self.route) == 0:
                     self.route = []
                     return
@@ -339,15 +347,29 @@ class Person:
         """
         if self.travelling:
 
-            todays_travel_speed = float(self.location.attributes.get("max_move_speed", SimulationSettings.move_rules["MaxMoveSpeed"]))
+            if hydro.enabled():
+                h = hydro.get()
+                # A link that closes for this agent's mode while it is on it: turn back.
+                if h.link_closed(self, self.location.startpoint.name, self.location.endpoint.name, time):
+                    if capacity.enabled():
+                        d = capacity.destination(self)
+                        if d is not None:
+                            capacity.get().release(d)
+                    self.route = []
+                    self.handle_travel(self.location.startpoint, travelling=False)
+                    return
+                # Mode-specific maximum speed reduced by the link's depth-dependent speed factor.
+                todays_travel_speed = h.travel_speed(self, self.location, time)
+            else:
+                todays_travel_speed = float(self.location.attributes.get("max_move_speed", SimulationSettings.move_rules["MaxMoveSpeed"]))
 
-            if self.places_travelled == 1 and SimulationSettings.move_rules["StartOnFoot"]:
-                todays_travel_speed = SimulationSettings.move_rules["MaxWalkSpeed"]
+                if self.places_travelled == 1 and SimulationSettings.move_rules["StartOnFoot"]:
+                    todays_travel_speed = SimulationSettings.move_rules["MaxWalkSpeed"]
 
-            # Flee 3.0: support for walk_probability attribute on links.
-            walk_probability = float(self.location.attributes.get("walk_probability","0.0"))
-            if random.random() < walk_probability:
-                todays_travel_speed = SimulationSettings.move_rules["MaxWalkSpeed"]
+                # Flee 3.0: support for walk_probability attribute on links.
+                walk_probability = float(self.location.attributes.get("walk_probability","0.0"))
+                if random.random() < walk_probability:
+                    todays_travel_speed = SimulationSettings.move_rules["MaxWalkSpeed"]
 
             self.distance_travelled_on_link += todays_travel_speed
             self.distance_moved_this_timestep += todays_travel_speed
@@ -1799,6 +1821,9 @@ class Ecosystem:
         """
         spawning.refresh_spawn_weights(self) # Required to correctly incorporate TakeFromPopulation and ConflictSpawnDecay.
 
+        if hydro.enabled():
+            hydro.get().bind(self)
+
         if capacity.enabled():
             capacity.get().bind(self)
         
@@ -1853,6 +1878,9 @@ class Ecosystem:
                             outcome = random.random()
                             if outcome < a.location.attributes.get("deactivation_probability", 0.0):
                                 a.location = None
+
+        if hydro.enabled():
+            hydro.get().record(self)
 
         self.time += 1
         self.date = datetime.strptime(self.start_date_string, "%Y-%m-%d") + timedelta(days=self.time)

@@ -8,7 +8,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 import numpy as np
-from flee import flee,scoring,spawning,crawling,demographics,capacity
+from flee import flee,scoring,spawning,crawling,demographics,capacity,hydro
 from flee.Diagnostics import write_agents_par,write_links_par
 from flee.SimulationSettings import SimulationSettings
 from mpi4py import MPI
@@ -886,6 +886,9 @@ class Ecosystem(flee.Ecosystem):
         for i, le in enumerate(self.locations):
             le.numAgentsSpawned = spawn_totals[i]
 
+        if hydro.enabled():
+            hydro.get().bind(self)
+
         if capacity.enabled():
             # Reservations summed over ranks; new ones scaled by the number of ranks.
             capacity.get().bind(self, reduce=self.mpi.CalcCommWorldTotal,
@@ -930,6 +933,11 @@ class Ecosystem(flee.Ecosystem):
                         outcome = random.random()
                         if outcome < a.location.attributes.get("deactivation_probability", 0.0):
                             a.location = None
+
+        if hydro.enabled():
+            # Counts are summed over ranks; only rank 0 writes the log.
+            hydro.get().record(self, reduce=self.mpi.CalcCommWorldTotal,
+                               write=(self.mpi.rank == 0))
 
         self.time += 1
         self.date = datetime.strptime(self.start_date_string, "%Y-%m-%d") + timedelta(days=self.time)

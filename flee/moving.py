@@ -8,6 +8,7 @@ from flee.SimulationSettings import SimulationSettings
 import flee.spawning as spawning
 import flee.demographics as demographics
 from flee import capacity
+from flee import hydro
 
 if os.getenv("FLEE_TYPE_CHECK") is not None and os.environ["FLEE_TYPE_CHECK"].lower() == "true":
     from beartype import beartype as check_args_type
@@ -508,6 +509,10 @@ def calculateMoveChance(a, ForceTownMove: bool, time) -> Tuple[float, bool]:
                 # Make the flood_forecast_base effect the actual base score
                 movechance *= flood_forecast_movechance  
                   
+    # Hydro rules: staged warnings raise the move chance at warned locations.
+    if hydro.enabled():
+        movechance = hydro.get().apply_warning(a, time, movechance)
+
     return movechance, system2_active 
 
 
@@ -583,6 +588,8 @@ def selectRoute(a, time: int, debug: bool = False, return_all_routes: bool = Fal
           weights = weights + [a.location.routes[l][0] * getEndPointScore(a, a.location.routes[l][2], time)]
           routes = routes + [a.location.routes[l][1]]
       #print("FixedRoute Weights", a.location.name, weights, routes, file=sys.stderr)
+      if hydro.enabled():
+          weights, routes = hydro.get().filter_routes(a, time, weights, routes)
   else:
       for k, e in enumerate(a.location.links):
           wgt, rts = calculateLinkWeight(
@@ -605,6 +612,12 @@ def selectRoute(a, time: int, debug: bool = False, return_all_routes: bool = Fal
       #Last step: delete origin from suggested routes.
       for i in range(0, len(routes)):
           routes[i] = routes[i][1:]
+
+      # Hydro rules: drop routes closed for the agent's travel mode, apply anticipation.
+      if hydro.enabled():
+          weights, routes = hydro.get().filter_routes(a, time, weights, routes)
+          if len(weights) == 0:
+              return []
 
       # Apply pruning (now influenced by System 2 parameters if active)
       weights, routes = pruneRoutes(weights, routes)

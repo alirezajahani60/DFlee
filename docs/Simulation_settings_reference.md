@@ -255,6 +255,12 @@ move_rules:
 
 ---
 
+## `hydro_rules` (optional, DFlee)
+
+Off unless `enabled: True`. Road accessibility and speed per travel mode from a hydrodynamic model, staged flood warnings and anticipation of road closures, implemented in `flee/hydro.py`. See [Hydrodynamic movement rules](Hydrodynamic_Movement_Rules.md) for the input files and all settings.
+
+---
+
 ## `capacity_rules` (optional)
 
 Off unless `enabled: True`, so existing runs are unchanged. Implemented in `flee/capacity.py` (Jahani et al., in preparation). Without these rules, a destination's occupancy counts only agents that have arrived, so all agents that decide in the same step see the same (often empty) destination and a sudden mass departure overfills camps.
