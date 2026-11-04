@@ -60,7 +60,7 @@ if __name__ == "__main__":
   output_header_string += "Total error,refugees in camps (UNHCR),total refugees (simulation),raw UNHCR refugee count,refugees in camps (simulation),refugee_debt"
 
   if SimulationSettings.log_levels["idp_totals"] > 0:
-      output += ",total IDPs".format(e.numIDPs())
+      output_header_string += ",total IDPs"
 
   if e.getRankN(0):
       print(output_header_string)
