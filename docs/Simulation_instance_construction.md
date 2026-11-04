@@ -123,6 +123,7 @@ Several **custom_attributes** trigger behavioral changes in the Flee 3 simulatio
 
 * `initial_idps`, which is an attribute that can be added to any location to populate it with the indicated number of IDPs on Day 0. This attribute also technically works for refugee camps abroad, but hasn't yet been tested for this use case. (**new as of 6-9-2024**)
 * `conflict_intensity`, which when explicitly defined for a location of type conflict, will override the default value (1.0) for conflict intensity to a custom-defined intensity level.
+* `location_weight`, which multiplies the attractiveness score of a location (e.g. `4` for a customary or designated evacuation site that people know and head for). Leave it empty (or 1) for locations without a weight.
 * `capacity_per_day`, which increases the capacity of a location by the number indicated for every day in the simulaton. This is to mimic partially open camps, where only a limited number of persons can be admitted. When enabling this column, ensure that a 0 value is put for all locations that do not have growing capacities (including towns etc.).
 
 Record distances between locations in **`routes.csv`** file for simulation using the following format:
