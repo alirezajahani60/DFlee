@@ -22,6 +22,8 @@ The main results file used for validation, analysis and plotting. For each day o
 | `raw UNHCR refugee count` | The total reported refugee count from the validation data, including those not yet in camps. |
 | `refugees in camps (simulation)` | The total number of simulated refugees who are currently inside a camp. |
 | `refugee_debt` | A counter tracking any mismatch in how many agents have been introduced into the simulation (e.g. due to rounding when converting real-world counts into individual agents). |
+| `total IDPs` | Only with `log_levels: idp_totals: 1`. |
+| `displaced_from_origin`, `displaced_from_origin_pct` | Only with `log_levels: displaced_from_origin: 1`: agents away from their home location (on a link, counted by its endpoint), summed over MPI ranks, and their share of all agents. |
 
 ---
 

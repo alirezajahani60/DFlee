@@ -61,6 +61,9 @@ if __name__ == "__main__":
   if SimulationSettings.log_levels["idp_totals"] > 0:
     output_header_string += ",total IDPs"
 
+  if SimulationSettings.log_levels["displaced_from_origin"] > 0:
+    output_header_string += ",displaced_from_origin,displaced_from_origin_pct"
+
   print(output_header_string)
   refugee_debt = 0
   refugees_raw = 0 #raw (interpolated) data from TOTAL UNHCR refugee count only.
@@ -112,5 +115,9 @@ if __name__ == "__main__":
 
     if SimulationSettings.log_levels["idp_totals"] > 0:
       output += ",{}".format(e.numIDPs())
+
+    if SimulationSettings.log_levels["displaced_from_origin"] > 0:
+      n_away = e.numDisplacedFromOrigin()
+      output += ",{},{}".format(n_away, n_away / max(1, e.numAgents()))
 
     print(output)

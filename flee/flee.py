@@ -2004,6 +2004,29 @@ class Ecosystem:
 
 
     @check_args_type
+    def numDisplacedFromOrigin(self) -> int:
+        """
+        Summary:
+            Number of active agents that are not at their home location
+            (agents on a link count by the link's endpoint).
+
+        Args:
+            None.
+
+        Returns:
+            int: number of agents away from their origin.
+        """
+        n = 0
+        for a in self.agents:
+            if a.location is None:
+                continue
+            loc = a.location.endpoint if a.travelling else a.location
+            if loc is not a.home_location:
+                n += 1
+        return n
+
+
+    @check_args_type
     def linkUp(
         self,
         endpoint1: str,

@@ -493,6 +493,21 @@ class Ecosystem(flee.Ecosystem):
 
 
     @check_args_type
+    def numDisplacedFromOrigin(self) -> int:
+        """
+        Summary:
+            Number of active agents away from their home location, summed over all ranks.
+
+        Args:
+            None.
+
+        Returns:
+            int: number of agents away from their origin.
+        """
+        return int(self.mpi.CalcCommWorldTotalSingle(super().numDisplacedFromOrigin()))
+
+
+    @check_args_type
     def linkUp(
         self,
         endpoint1: str,
