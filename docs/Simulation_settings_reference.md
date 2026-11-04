@@ -255,6 +255,34 @@ move_rules:
 
 ---
 
+## `capacity_rules` (optional)
+
+Off unless `enabled: True`, so existing runs are unchanged. Implemented in `flee/capacity.py` (Jahani et al., in preparation). Without these rules, a destination's occupancy counts only agents that have arrived, so all agents that decide in the same step see the same (often empty) destination and a sudden mass departure overfills camps.
+
+```yaml
+capacity_rules:
+  enabled: True
+  count_en_route: True
+  stay_if_no_room: True
+  host_capacity:
+    factor: 0.2
+    location_types: [flood_zone, town]
+    people_per_agent: 1
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | bool | `False` | Switch the capacity rules on. |
+| `count_en_route` | bool | `True` | Occupancy in route choice counts agents travelling to a location as their final destination (reservations) as well as those already there. A reservation is made as soon as an agent chooses a route, and released if it gives the route up. The arrival check uses arrived agents only, so an agent is not turned away by its own reservation. Under pflee, reservations are summed over ranks at the start of each step. |
+| `stay_if_no_room` | bool | `True` | If every candidate route has zero weight (all destinations full), the agent stays where it is instead of choosing uniformly among them. |
+| `host_capacity.factor` | float | `0.0` | Non-camp locations of the listed types without a capacity get `capacity = factor * pop / people_per_agent`, the number of displaced agents they can host. A `host_capacity` column in locations.csv sets it directly and takes precedence. |
+| `host_capacity.location_types` | list | `[flood_zone, town]` | Location types that receive a host capacity. |
+| `host_capacity.people_per_agent` | float | `1` | Converts populations given in people when each agent stands for several people. |
+
+When a destination is found full on the way, the agent releases its reservation and chooses a new route from where it is.
+
+---
+
 ## `optimisations`
 
 | Parameter | Type | Default | Other values used | Description |

@@ -13,6 +13,7 @@ import numpy as np
 from flee.Diagnostics import write_agents, write_links
 from flee.SimulationSettings import SimulationSettings
 from flee import moving, spawning, scoring, demographics
+from flee import capacity
 
 if os.getenv("FLEE_TYPE_CHECK") is not None and os.environ["FLEE_TYPE_CHECK"].lower() == "true":
     from beartype import beartype as check_args_type
@@ -194,6 +195,14 @@ class Person:
         """
         for i in range(0, len(e.locationNames)):
             if e.locationNames[i] == self.route[-1]:
+                if capacity.enabled():
+                    # Full only when the agents already there fill it. Reservations are
+                    # left out, so the agent's own reservation cannot turn it away, and
+                    # the threshold matches route choice, which allows a destination
+                    # until it is full.
+                    loc = e.locations[i]
+                    cap = loc.capacity * float(SimulationSettings.move_rules["CapacityScaling"])
+                    return bool(cap >= 1 and loc.numAgents >= cap)
                 if e.locations[i].camp and moving.getCapMultiplier(e.locations[i],1) < 0.5:
                     #print(e.time, e.locationNames[i], self.route[-1], file=sys.stderr)
                     return True
@@ -202,7 +211,7 @@ class Person:
         print(f"Error: camp {self.route[-1]} not found in check_dest_is_full_camp", file=sys.stderr)
         sys.exit()
     
-    def take_next_step(self,e):
+    def take_next_step(self, e, _replanned: bool = False):
         """
         Summary:
             Takes the next step on the agent's route.
@@ -220,6 +229,17 @@ class Person:
             if l.endpoint.name == self.route[0]:
                 # Check if the destination camp is full, flooded. If so, remove the route and return `None`.
                 if self.check_dest_is_full_camp(e):
+                    if capacity.enabled():
+                        # Capacity rules: give up the reservation and choose again from
+                        # here, rather than stopping at a stop the agent never chose.
+                        capacity.get().release(self.route[-1])
+                        self.route = []
+                        if not _replanned:
+                            self.route = moving.selectRoute(self, time=e.time) or []
+                            if len(self.route) > 0:
+                                capacity.get().commit(self.route[-1])
+                                return self.take_next_step(e, _replanned=True)
+                        return None
                     self.route = []
                     return None
                 # Otherwise, remove the first link from the route and return the next link.
@@ -227,6 +247,8 @@ class Person:
                 return l
 
         # Link has vanished, remove route.
+        if capacity.enabled() and len(self.route) > 0:
+            capacity.get().release(self.route[-1])
         self.route = []
         return None
 
@@ -283,7 +305,15 @@ class Person:
                     else:
                         # System 1 route planning: calculate route on the fly
                         self.route = moving.selectRoute(self, time=time)
-    
+                    # Capacity rules: reserve a place at the chosen destination at once.
+                    if capacity.enabled() and self.route:
+                        capacity.get().commit(self.route[-1])
+
+                # No accessible route (e.g. no destination with room): stay in place.
+                if self.route is None or len(self.route) == 0:
+                    self.route = []
+                    return
+
                 # Attempt to follow route. Return None if fail.  
                 chosenDest = self.take_next_step(e)
     
@@ -352,6 +382,10 @@ class Person:
 
                     # update location (which is on a link) to link endpoint
                     self.handle_travel(self.location.endpoint, travelling=False)
+
+                    # Capacity rules: the reservation ends when the final destination is reached.
+                    if capacity.enabled() and len(self.route) == 0:
+                        capacity.get().arrived(self.location.name)
 
                     if SimulationSettings.log_levels["camp"] > 0:
                         if self.location.camp is True:
@@ -1764,6 +1798,9 @@ class Ecosystem:
             None.
         """
         spawning.refresh_spawn_weights(self) # Required to correctly incorporate TakeFromPopulation and ConflictSpawnDecay.
+
+        if capacity.enabled():
+            capacity.get().bind(self)
         
         # update location scores
         for loc in self.locations:

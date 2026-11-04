@@ -8,7 +8,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 import numpy as np
-from flee import flee,scoring,spawning,crawling,demographics
+from flee import flee,scoring,spawning,crawling,demographics,capacity
 from flee.Diagnostics import write_agents_par,write_links_par
 from flee.SimulationSettings import SimulationSettings
 from mpi4py import MPI
@@ -885,6 +885,11 @@ class Ecosystem(flee.Ecosystem):
         # update location spawn total.
         for i, le in enumerate(self.locations):
             le.numAgentsSpawned = spawn_totals[i]
+
+        if capacity.enabled():
+            # Reservations summed over ranks; new ones scaled by the number of ranks.
+            capacity.get().bind(self, reduce=self.mpi.CalcCommWorldTotal,
+                                commit_weight=self.mpi.size, release_on_arrival=False)
 
         # update agent locations
         for a in self.agents:

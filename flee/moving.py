@@ -7,6 +7,7 @@ from beartype.typing import List, Optional, Tuple
 from flee.SimulationSettings import SimulationSettings
 import flee.spawning as spawning
 import flee.demographics as demographics
+from flee import capacity
 
 if os.getenv("FLEE_TYPE_CHECK") is not None and os.environ["FLEE_TYPE_CHECK"].lower() == "true":
     from beartype import beartype as check_args_type
@@ -172,7 +173,7 @@ def getEndPointScore(agent, endpoint, time) -> float:
 
 
 @check_args_type
-def getCapMultiplier(location, numOnLink: int) -> float:
+def getCapMultiplier(location, numOnLink: int, include_pending: bool = True) -> float:
     """
     Summary:
         Checks whether a given location has reached full capacity
@@ -181,6 +182,8 @@ def getCapMultiplier(location, numOnLink: int) -> float:
     Args:
         location (Location): location to check
         numOnLink (int): number of agents on the link
+        include_pending (bool): with capacity rules enabled, count agents en route
+            to the location (reservations) as well as those already there.
 
     Returns:
         float: returns a value between 0.0 and 1.0, where:
@@ -198,14 +201,18 @@ def getCapMultiplier(location, numOnLink: int) -> float:
     if cap < 1:
         return 1.0
 
-    if location.numAgents <= nearly_full_occ * cap:
+    occ = location.numAgents
+    if include_pending and capacity.enabled():
+        occ = capacity.get().occupancy(location)
+
+    if occ <= nearly_full_occ * cap:
         return 1.0
 
-    if location.numAgents >= 1.0 * cap:
+    if occ >= 1.0 * cap:
         return 0.0
 
     # should be a number equal in range [0 to 0.1*self.numAgents].
-    residual = location.numAgents - (nearly_full_occ * cap)
+    residual = occ - (nearly_full_occ * cap)
 
     # Calculate the residual weighting factor, when pop is between 0.9 and
     # 1.0 of capacity (with default settings).
@@ -608,6 +615,12 @@ def selectRoute(a, time: int, debug: bool = False, return_all_routes: bool = Fal
       SimulationSettings.move_rules["WeightSoftening"] = original_params['weight_softening']
       SimulationSettings.move_rules["DistancePower"] = original_params['distance_power']
       SimulationSettings.move_rules["PruningThreshold"] = original_params['pruning_threshold']
+
+  # Capacity rules: if no candidate route has room (all weights zero), stay put
+  # rather than choosing uniformly among full destinations.
+  if capacity.enabled() and capacity.get().stay_if_no_room:
+      if len(weights) == 0 or sum(weights) <= 0.0:
+          return []
 
   route = chooseFromWeights(weights=weights, routes=routes)
   
