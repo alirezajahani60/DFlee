@@ -21,7 +21,10 @@ simsetting.yml:
 
 Entrapment (Section 5.3) is logged per step and mode: agents at a location
 with flood level >= entrapment_level that cannot reach a location below that
-level through links open for their mode within the awareness range.
+level through links open for their mode within the awareness range
+(``entrapped``), and those that cannot reach one anywhere on the graph
+(``physically_isolated``), which separates physical isolation from the
+limits of the agents' knowledge.
 
 Works with the serial Ecosystem (flee.py) and with pflee: under MPI every
 rank holds the full network and its own share of agents, so per-agent rules
@@ -79,6 +82,14 @@ class _Hydro:
         self.ant_enabled = bool(a.get("enabled", False))
         self.H = int(a.get("horizon", 0))
         self.lam = float(a.get("strength", 0.0))
+        # phi_r: share of links ("links", Eq. 10), of route length ("length") or of
+        # travel time ("time") forecast to close before the agent gets there
+        self.ant_weighting = str(a.get("weighting", "links"))
+        if self.ant_weighting not in ("links", "length", "time"):
+            raise ValueError("hydro_rules.anticipation.weighting must be links, length or time")
+        # forecast timing error in steps: the forecast of the state at t + tau is the
+        # true state at t + tau + shift (shift > 0: closures forecast too early)
+        self.fc_shift = int(a.get("forecast_shift", 0))
         # ---- entrapment
         self.entrap_level = int(cfg.get("entrapment_level", 2))
         self.entrap_log = cfg.get("entrapment_log", "hydro_entrapment.csv")
@@ -201,19 +212,27 @@ class _Hydro:
             if any(not self.link_state(a, b, mode, t)[0] for a, b in pairs):
                 continue
             if aware:
-                blocked, cum = 0, 0.0
+                blocked, total, cum = 0.0, 0.0, 0.0
                 for a, b in pairs:
                     acc, g = self.link_state(a, b, mode, t)
-                    cum += self._distance(a, b) / max(g, 1e-3)
+                    d = self._distance(a, b)
+                    cum += d / max(g, 1e-3)
                     reach = min(int(cum // speed), self.H)   # steps until the end of this link
-                    if any(not self.link_state(a, b, mode, t + tau)[0] for tau in range(1, reach + 1)):
-                        blocked += 1
-                phi = blocked / len(pairs)
+                    wt = 1.0 if self.ant_weighting == "links" else (
+                        d if self.ant_weighting == "length" else d / max(g, 1e-3))
+                    total += wt
+                    if any(not self._forecast_link(a, b, mode, t, tau) for tau in range(1, reach + 1)):
+                        blocked += wt
+                phi = blocked / total if total > 0 else 0.0
                 w = w * (1.0 - self.lam * phi)
                 w = w * self._destination_factor(path[-1], t)
             out_w.append(w)
             out_r.append(r)
         return out_w, out_r
+
+    def _forecast_link(self, a, b, mode, t, tau):
+        """Forecast accessibility of link (a, b) at t + tau, with the timing error."""
+        return self.link_state(a, b, mode, max(t, t + tau + self.fc_shift))[0]
 
     def _distance(self, a, b):
         loc = self.loc_by_name.get(a)
@@ -227,7 +246,8 @@ class _Hydro:
         """Replace W_f(F_j(t)) by W_f(max forecast level over the horizon)."""
         wf = SimulationSettings.move_rules["FloodLocWeights"]
         now = min(self.level(name, t), len(wf) - 1)
-        fut = min(max(self.level(name, t + tau) for tau in range(0, self.H + 1)), len(wf) - 1)
+        fut = min(max(self.level(name, max(t, t + tau + self.fc_shift)) for tau in range(0, self.H + 1)),
+                  len(wf) - 1)
         w_now = float(wf[now])
         if w_now <= 0.0:
             return 1.0
@@ -240,11 +260,16 @@ class _Hydro:
         return self.mode_speed[mode] * (g if acc else 0.0)
 
     # ------------------------------------------------------------- logging
-    def _can_escape(self, loc, mode, t, depth):
+    def _can_escape(self, loc, mode, t, depth=None):
+        """Whether a location below the entrapment level is reachable over links open
+        for this mode now: within ``depth`` links (the awareness range), or without
+        limit if ``depth`` is None (physical reachability on the whole graph)."""
         safe = self.entrap_level
         seen = {loc.name}
         frontier = [loc]
-        for _ in range(max(1, depth)):
+        hops = 0
+        while frontier and (depth is None or hops < max(1, depth)):
+            hops += 1
             nxt = []
             for l in frontier:
                 for link in l.links:
@@ -267,7 +292,7 @@ class _Hydro:
         """
         t = e.time
         depth = int(round(SimulationSettings.move_rules.get("AwarenessLevel", 1)))
-        counts = {m: [0, 0] for m in self.mode_names}   # [in_flooded, entrapped]
+        counts = {m: [0, 0, 0] for m in self.mode_names}   # [in_flooded, entrapped, physically isolated]
         cache = {}
         for a in e.agents:
             if a.location is None or a.travelling:
@@ -279,24 +304,27 @@ class _Hydro:
             counts[m][0] += 1
             key = (name, m)
             if key not in cache:
-                cache[key] = self._can_escape(a.location, m, t, depth)
-            if not cache[key]:
+                cache[key] = (self._can_escape(a.location, m, t, depth), self._can_escape(a.location, m, t, None))
+            within, anywhere = cache[key]
+            if not within:
                 counts[m][1] += 1
+            if not anywhere:
+                counts[m][2] += 1
         if reduce is not None:
             import numpy as np
             flat = np.array([v for m in self.mode_names for v in counts[m]], dtype="i")
             flat = reduce(flat)
-            counts = {m: [int(flat[2 * i]), int(flat[2 * i + 1])] for i, m in enumerate(self.mode_names)}
+            counts = {m: [int(x) for x in flat[3 * i:3 * i + 3]] for i, m in enumerate(self.mode_names)}
         if not write:
             return
         mode_flag = "w" if not self._log_header_written else "a"
         with open(self.entrap_log, mode_flag, newline="") as f:
             w = csv.writer(f)
             if not self._log_header_written:
-                w.writerow(["step", "mode", "agents_in_flooded_locations", "entrapped"])
+                w.writerow(["step", "mode", "agents_in_flooded_locations", "entrapped", "physically_isolated"])
                 self._log_header_written = True
-            for m, (n, k) in counts.items():
-                w.writerow([t, m, n, k])
+            for m, (n, k, iso) in counts.items():
+                w.writerow([t, m, n, k, iso])
 
 
 # ------------------------------------------------------------------ API

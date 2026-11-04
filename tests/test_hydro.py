@@ -110,4 +110,50 @@ def test_entrapment_log(world, tmp_path):
             h.links[key] = (False, 1.0)
     h.record(e)
     rows = (tmp_path / "entrap.csv").read_text().strip().splitlines()
-    assert rows[-1] == "3,foot,5,5"
+    assert rows[0].endswith("entrapped,physically_isolated")
+    assert rows[-1] == "3,foot,5,5,5"
+
+
+def test_physical_isolation_differs_from_awareness_range(world, tmp_path):
+    e, h = world
+    for _ in range(4):
+        e.addAgent(e.locations[0], {})
+    e.time = 3                     # A level 3, B level 2 (unsafe), C dry
+    SimulationSettings.move_rules["AwarenessLevel"] = 1
+    for key in list(h.links):      # only A-B and B-C open: C is two links away
+        if key[0] == 3 and set(key[1:3]) == {"A", "C"}:
+            h.links[key] = (False, 1.0)
+    h.record(e)
+    last = (tmp_path / "entrap.csv").read_text().strip().splitlines()[-1]
+    assert last == "3,foot,4,4,0"  # trapped within one link, but C is reachable
+
+
+def test_length_weighted_anticipation(world):
+    e, h = world
+    a = flee.Person(e.locations[0], {})
+    h.state(a)[1] = True
+    h.ant_weighting = "length"
+    # route A-B-C: close only B-C (10 km of 20 km) in the forecast
+    for s in (2, 3):
+        h.links[(s, "B", "C", "foot")] = (False, 1.0)
+        h.links[(s, "C", "B", "foot")] = (False, 1.0)
+    w, r = h.filter_routes(a, 1, [1.0], [["B", "C"]])
+    assert w[0] == pytest.approx((1.0 - 0.5) * h._destination_factor("C", 1))
+
+
+def test_forecast_shift_moves_forecast_closures(world):
+    e, h = world
+    a = flee.Person(e.locations[0], {})
+    h.state(a)[1] = True
+    # A-C closes at t=2. At t=1 a perfect forecast sees the closure before arrival;
+    # a forecast one step late still shows the link open.
+    h.fc_shift = 0
+    w, r = h.filter_routes(a, 1, [1.0], [["C"]])
+    assert w[0] == pytest.approx(0.0)
+    h.fc_shift = -1
+    w, r = h.filter_routes(a, 1, [1.0], [["C"]])
+    assert w[0] > 0.0
+    # a forecast one step early sees it closing at t=0 already
+    h.fc_shift = 1
+    w, r = h.filter_routes(a, 0, [1.0], [["C"]])
+    assert w[0] == pytest.approx(0.0)
