@@ -323,6 +323,12 @@ class SimulationSettings:
         # DFlee Flood Location Move rules
         dpf = fetchss(dpr, "flood_rules", None)
 
+        # DFlee sensitivity scales (Jahani et al. 2026); 1.0 leaves the flood rules unchanged.
+        SimulationSettings.move_rules["FloodSeverityScale"] = 1.0
+        SimulationSettings.move_rules["FloodMoveScale"] = 1.0
+        SimulationSettings.move_rules["FloodLocScale"] = 1.0
+        SimulationSettings.spawn_rules["FloodSpawnScale"] = 1.0
+
         if dpf is not None:
           SimulationSettings.move_rules["FloodRulesEnabled"] = True
           SimulationSettings.spawn_rules["MaxFloodLevel"] = int(fetchss(dpf,"max_flood_level", -1))
@@ -334,6 +340,17 @@ class SimulationSettings:
           # FloodLocWeights *multiply* existing location weights when flood level is higher than 0.
           SimulationSettings.move_rules["FloodLocWeights"] = fetchss(dpf,"flood_loc_weights", None) # Expect an array or dict
           print("Flood Location Weights set to:", SimulationSettings.move_rules["FloodLocWeights"], file=sys.stderr)
+
+          # Sensitivity scales: flood levels are multiplied by flood_severity_scale (capped at the highest level),
+          # flood move chances and location weights are raised to flood_move_scale and flood_loc_scale,
+          # and flood spawning is multiplied by flood_spawn_scale.
+          SimulationSettings.move_rules["FloodSeverityScale"] = float(fetchss(dpf, "flood_severity_scale", 1.0))
+          SimulationSettings.move_rules["FloodMoveScale"] = float(fetchss(dpf, "flood_move_scale", 1.0))
+          SimulationSettings.move_rules["FloodLocScale"] = float(fetchss(dpf, "flood_loc_scale", 1.0))
+          SimulationSettings.spawn_rules["FloodSpawnScale"] = float(fetchss(dpf, "flood_spawn_scale", 1.0))
+          print("Flood scales (severity, move, location, spawn):", SimulationSettings.move_rules["FloodSeverityScale"],
+                SimulationSettings.move_rules["FloodMoveScale"], SimulationSettings.move_rules["FloodLocScale"],
+                SimulationSettings.spawn_rules["FloodSpawnScale"], file=sys.stderr)
           
           # FloodLinkWeights *multiply* existing link weights when flood level is higher than 0.
           SimulationSettings.move_rules["FloodLinkWeights"] = fetchss(dpf,"flood_link_weights", None) # Expect an array or dict

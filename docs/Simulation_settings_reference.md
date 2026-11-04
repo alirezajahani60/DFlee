@@ -247,6 +247,10 @@ move_rules:
 | `flood_forecaster_end_time` | int | `0` | Last simulation day for which forecast data is available. |
 | `flood_forecaster_weights` | float list | `None` | Importance weight applied to each forecast day (1.0 = full weight, 0.0 = ignored). Length must equal `flood_forecaster_timescale`. |
 | `flood_awareness_weights` | float list | `None` | Per-awareness-group weight for flood forecasts, e.g. `[0.0, 0.5, 1.0]` for three awareness groups. |
+| `flood_severity_scale` | float | `1.0` | Multiplies every flood level before it is used for move chances, location weights and spawning; capped at the highest level. Used for sensitivity analysis (Jahani et al. 2026). |
+| `flood_move_scale` | float | `1.0` | Exponent applied to `flood_movechances` (result capped at 1.0). Values above 1 lower the move chances, values below 1 raise them. |
+| `flood_loc_scale` | float | `1.0` | Exponent applied to `flood_loc_weights`. |
+| `flood_spawn_scale` | float | `1.0` | Multiplies the number of agents spawned by flood-driven spawning (all `flood_spawn_mode` options). |
 
 ---
 
