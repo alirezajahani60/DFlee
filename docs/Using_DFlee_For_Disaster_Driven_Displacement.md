@@ -18,7 +18,7 @@ In the section `spawn_rules`, you will need to add or set the following:
   flood_driven_spawning: True
   flood_zone_spawning_only: True
   take_from_population: True
-  flood_driven_spawning:
+  flood_driven_spawn_mode:
     flood_spawn_mode: "pop_ratio"
     displaced_per_flood_day: [0.0,0.1,0.2,0.5,0.9]
 ```
