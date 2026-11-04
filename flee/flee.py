@@ -1103,7 +1103,7 @@ class Ecosystem:
         removed = False
 
         for i in range(0, len(self.locations[x].links)):
-            if self.locations[x].links[i].endpoint.name is not endpoint:
+            if self.locations[x].links[i].endpoint.name != endpoint:
                 new_links += [self.locations[x].links[i]]
                 continue
 
@@ -1157,7 +1157,7 @@ class Ecosystem:
         #       )
 
         for i in range(0, len(self.locations[x].closed_links)):
-            if self.locations[x].closed_links[i].endpoint.name is not endpoint:
+            if self.locations[x].closed_links[i].endpoint.name != endpoint:
                 # print("[{}] to [{}] ({})".format(
                 #     startpoint,
                 #     self.locations[x].closed_links[i].endpoint.name,
@@ -1205,9 +1205,13 @@ class Ecosystem:
             bool: Description
         """
         if twoway:
-            return self._remove_link_1way(
+            back = self._remove_link_1way(
                 startpoint=endpoint, endpoint=startpoint, close_only=close_only
             )
+            fwd = self._remove_link_1way(
+                startpoint=startpoint, endpoint=endpoint, close_only=close_only
+            )
+            return back and fwd
 
         return self._remove_link_1way(
             startpoint=startpoint, endpoint=endpoint, close_only=close_only
@@ -1230,7 +1234,9 @@ class Ecosystem:
             bool: Description
         """
         if twoway:
-            return self._reopen_link_1way(startpoint=endpoint, endpoint=startpoint)
+            back = self._reopen_link_1way(startpoint=endpoint, endpoint=startpoint)
+            fwd = self._reopen_link_1way(startpoint=startpoint, endpoint=endpoint)
+            return back and fwd
 
         return self._reopen_link_1way(startpoint=startpoint, endpoint=endpoint)
 

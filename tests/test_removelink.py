@@ -30,5 +30,33 @@ def test_removelink():
     print("Test successful!")
 
 
+def _links(e, name):
+    loc = e.locations[e._convert_location_name_to_index(name=name)]
+    return sorted(l.endpoint.name for l in loc.links), sorted(l.endpoint.name for l in loc.closed_links)
+
+
+def test_twoway_remove_and_reopen_act_in_both_directions():
+    flee.SimulationSettings.ReadFromYML("empty.yml")
+    e = flee.Ecosystem()
+    for n in ["A", "B", "C"]:
+        e.addLocation(name=n, movechance=0.0)
+    e.linkUp(endpoint1="A", endpoint2="B", distance=10.0)
+    e.linkUp(endpoint1="A", endpoint2="C", distance=10.0)
+
+    # endpoint name built at run time, so it is not the same string object as the stored name
+    c = "".join(["C"])
+    assert e.close_link(startpoint="A", endpoint=c)
+    assert _links(e, "A") == (["B"], ["C"])
+    assert _links(e, "C") == ([], ["A"])
+
+    assert e.reopen_link(startpoint="A", endpoint=c)
+    assert _links(e, "A") == (["B", "C"], [])
+    assert _links(e, "C") == (["A"], [])
+
+    assert e.remove_link(startpoint="A", endpoint="B")
+    assert _links(e, "A") == (["C"], [])
+    assert _links(e, "B") == ([], [])
+
+
 if __name__ == "__main__":
     test_removelink()
