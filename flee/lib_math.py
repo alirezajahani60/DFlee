@@ -1,8 +1,10 @@
 def interp(a, i):
     # a: python list
     # i: index value to be interpolated (float).
-    if i < 0 or i >= len(a) - 1:
+    if i < 0 or i > len(a) - 1:
         raise IndexError("interp failed: Index out of interpolation range")
+    if i == len(a) - 1:  # the highest level: no next value to interpolate towards.
+        return a[-1]
     i0 = int(i)
     frac = i - i0
     return a[i0] + frac * (a[i0 + 1] - a[i0])
