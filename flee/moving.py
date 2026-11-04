@@ -72,8 +72,10 @@ def getEndPointScore(agent, endpoint, time) -> float:
         flood_level = endpoint.attributes.get("flood_level", 0.0)
         #print("Link:", endpoint.name, endpoint.attributes, file=sys.stderr)
         if flood_level > 0.0:
-            #set the base equal to the flood location weight
-            base *= lm.interp(SimulationSettings.move_rules["FloodLocWeights"], flood_level)
+            weights = SimulationSettings.move_rules["FloodLocWeights"]
+            flood_level = lm.scaled_level(flood_level, SimulationSettings.move_rules["FloodSeverityScale"], weights)
+            #set the base equal to the flood location weight (raised to FloodLocScale, 1.0 by default)
+            base *= lm.interp(weights, flood_level) ** SimulationSettings.move_rules["FloodLocScale"]
             #otherwise base score is unaffected by flooding
 
 
@@ -415,8 +417,10 @@ def calculateMoveChance(a, ForceTownMove: bool, time) -> Tuple[float, bool]:
         flood_level = a.location.attributes.get("flood_level", 0.0)
         
         if flood_level > 0.0:
-            #set the base equal to the flood location weight
-            movechance = lm.interp(SimulationSettings.move_rules["FloodMovechances"], flood_level)
+            chances = SimulationSettings.move_rules["FloodMovechances"]
+            flood_level = lm.scaled_level(flood_level, SimulationSettings.move_rules["FloodSeverityScale"], chances)
+            #set the base equal to the flood move chance (raised to FloodMoveScale, 1.0 by default)
+            movechance = min(1.0, lm.interp(chances, flood_level) ** SimulationSettings.move_rules["FloodMoveScale"])
             #otherwise base movechance is unaffected by flooding
             #print(f"flood_level: {flood_level}, movechance: {movechance}")
 

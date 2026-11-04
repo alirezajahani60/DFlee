@@ -9,6 +9,10 @@ def interp(a, i):
     frac = i - i0
     return a[i0] + frac * (a[i0 + 1] - a[i0])
 
+def scaled_level(level, scale, values):
+    # Flood (or other) level multiplied by a severity scale, capped at the highest index of values.
+    return min(float(level) * float(scale), float(len(values) - 1))
+
 def dict_interp(data, key, index_col, index_val):
     # d: dict to look into.
     # k: key containing values to be interpolated.
