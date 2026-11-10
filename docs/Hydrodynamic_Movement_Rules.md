@@ -56,6 +56,10 @@ hydro_rules:
 - **Anticipation.** For aware agents, a route's weight is multiplied by `1 - strength * phi`, where `phi` is the share of the route (by links, length or travel time) forecast to close before the agent, at its current speed, could pass it within the horizon. Destination flood weights use the highest forecast flood level over the horizon.
 - **Entrapment log.** Per step and mode, the number of agents at locations at or above `entrapment_level` that cannot reach a safer location over open links within their awareness range (`entrapped`), and those that cannot reach one anywhere on the graph (`physically_isolated`).
 
+## Outcomes
+
+Set `log_levels: evacuation_outcomes: 1` to write per-agent outcomes (departure, exposure, time to safety, travel mode; see [Output file descriptions](Output_file_descriptions.md)), and summarise them with `python -m flee.postprocessing.evacuation_outcomes`. This works with the hydro rules off too, so a run with all roads open can be compared with one where they close.
+
 ## Notes
 
 - Under pflee each rank holds the full network and its own agents, so the rules run unchanged; entrapment counts are summed over ranks and rank 0 writes the log. Every rank reads `link_states.csv`.

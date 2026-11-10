@@ -83,6 +83,7 @@ All log levels default to `0` (silent). Setting a level to `1` (or higher for `a
 | `conflict` | `0` | `0`, `1` | `1` = conflict-zone spawning information |
 | `init` | `0` | `0`, `1` | `1` = initialisation details |
 | `idp_totals` | `0` | `0`, `1` | `1` = appends a "total IDPs" column to `out.csv` |
+| `evacuation_outcomes` | `0` | `0`, `1` | `1` = writes `evacuation_outcomes.csv` (run.py) or `evacuation_outcomes.N.csv` per rank (run_par.py) at the end of the run, one row per agent; summarise with `python -m flee.postprocessing.evacuation_outcomes` |
 | `displaced_from_origin` | `0` | `0`, `1` | `1` = appends `displaced_from_origin` (agents away from their home location, summed over MPI ranks) and `displaced_from_origin_pct` (as a share of all agents) to `out.csv` |
 | `granularity` | `"location"` | `"location"`, `"region"` | Controls whether `agent` and `link` logs use individual location names or the region name from `locations.csv` |
 

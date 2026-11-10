@@ -27,6 +27,25 @@ The main results file used for validation, analysis and plotting. For each day o
 
 ---
 
+#### `evacuation_outcomes.csv` (`evacuation_outcomes.N.csv` under pflee)
+
+Written with `log_levels: evacuation_outcomes: 1`, one row per agent, for flood runs. A location is unsafe at flood level `hydro_rules.entrapment_level` or higher (default 2).
+
+| Column | Description |
+|--------|-------------|
+| `agent` | Agent identifier (prefixed by the rank under pflee). |
+| `home` | The agent's home location. |
+| `location` | Its location at the end (the link's endpoint if travelling). |
+| `travelling` | 1 if the agent ends on a link. |
+| `mode` | Travel mode, with the hydro rules; empty otherwise. |
+| `departed_step` | First step the agent left home (-1: never). |
+| `home_unsafe_step` | First step its home was unsafe (-1: never; the agent was not exposed). |
+| `safe_step` | First step at which, with its home unsafe, it stood at a safe location (-1: never). |
+
+`python -m flee.postprocessing.evacuation_outcomes <run_dir> --steps-per-day 4 [--entrapment <log>]` reports, overall and per travel mode, the exposed agents, the evacuation failure (exposed agents that never reached safety) and the median and 90th percentile time to safety, with the peaks of the entrapment log if given.
+
+---
+
 #### `agents.out.N`
 
 A detailed log of every individual refugee, separated by MPI rank (e.g. `N=0`, `1`, `2`, etc.). It tracks unique IDs, origin/current locations, GPS coordinates, travel distance, and movement status. It also includes specified demographic attributes such as age, gender, and ethnicity for every agent on each day. This file can become quite large depending on the duration of the simulation and the total population size.

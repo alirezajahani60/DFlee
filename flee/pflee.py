@@ -939,6 +939,9 @@ class Ecosystem(flee.Ecosystem):
             hydro.get().record(self, reduce=self.mpi.CalcCommWorldTotal,
                                write=(self.mpi.rank == 0))
 
+        if SimulationSettings.log_levels["evacuation_outcomes"] > 0:
+            self.track_evacuation_outcomes()
+
         self.time += 1
         self.date = datetime.strptime(self.start_date_string, "%Y-%m-%d") + timedelta(days=self.time)
         self.date_string = self.date.strftime("%Y-%m-%d")

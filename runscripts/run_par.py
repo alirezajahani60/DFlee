@@ -127,3 +127,7 @@ if __name__ == "__main__":
     if e.getRankN(t):
         print(output)
 
+
+  if SimulationSettings.log_levels["evacuation_outcomes"] > 0:
+    # one file per rank, as for agents.out.N
+    e.write_evacuation_outcomes("evacuation_outcomes.%d.csv" % e.mpi.rank, prefix="%d-" % e.mpi.rank)

@@ -1882,6 +1882,9 @@ class Ecosystem:
         if hydro.enabled():
             hydro.get().record(self)
 
+        if SimulationSettings.log_levels["evacuation_outcomes"] > 0:
+            self.track_evacuation_outcomes()
+
         self.time += 1
         self.date = datetime.strptime(self.start_date_string, "%Y-%m-%d") + timedelta(days=self.time)
         self.date_string = self.date.strftime("%Y-%m-%d")
@@ -2066,6 +2069,68 @@ class Ecosystem:
                 num_idps += l.numAgents
 
         return num_idps
+
+
+    def track_evacuation_outcomes(self) -> None:
+        """
+        Summary:
+            Per agent, records the first step it left home, the first step its home
+            location was at or above the unsafe flood level, and the first step at
+            which, with its home unsafe, it stood at a location below that level.
+            Called at the end of each step when log_levels.evacuation_outcomes > 0.
+            The unsafe level is hydro_rules.entrapment_level if set, otherwise 2.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+        """
+        if not hasattr(self, "evac_outcomes"):
+            self.evac_outcomes = {}
+        unsafe = int(SimulationSettings.hydro_rules.get("entrapment_level", 2)) if SimulationSettings.hydro_rules else 2
+        t = self.time
+        for a in self.agents:
+            if a.location is None:
+                continue
+            rec = self.evac_outcomes.get(id(a))
+            if rec is None:
+                rec = self.evac_outcomes[id(a)] = [a, -1, -1, -1]  # agent, departed, home unsafe from, safe at
+            home_unsafe = a.home_location.attributes.get("flood_level", 0) >= unsafe
+            if rec[1] < 0 and (a.travelling or a.location is not a.home_location):
+                rec[1] = t
+            if rec[2] < 0 and home_unsafe:
+                rec[2] = t
+            if rec[3] < 0 and home_unsafe and not a.travelling and a.location.attributes.get("flood_level", 0) < unsafe:
+                rec[3] = t
+
+
+    def write_evacuation_outcomes(self, path: str, prefix: str = "") -> None:
+        """
+        Summary:
+            Writes one row per agent tracked by track_evacuation_outcomes():
+            agent, home, current (or destination if travelling), travelling, travel mode
+            (hydro rules only), departed_step, home_unsafe_step, safe_step (-1 = never).
+            An agent is exposed if home_unsafe_step >= 0, and has failed to evacuate if it
+            is exposed and safe_step = -1.
+
+        Args:
+            path (str): output CSV file.
+            prefix (str): prefix of the agent identifiers (the rank under pflee).
+
+        Returns:
+            None.
+        """
+        recs = getattr(self, "evac_outcomes", {})
+        with open(path, "w") as f:
+            f.write("agent,home,location,travelling,mode,departed_step,home_unsafe_step,safe_step\n")
+            for i, (a, dep, unsafe_from, safe) in enumerate(recs.values()):
+                if a.location is None:
+                    where = ""
+                else:
+                    where = a.location.endpoint.name if a.travelling else a.location.name
+                mode = hydro.get().mode(a) if hydro.enabled() else ""
+                f.write(f"{prefix}{i},{a.home_location.name},{where},{int(bool(a.travelling))},{mode},{dep},{unsafe_from},{safe}\n")
 
 
     @check_args_type

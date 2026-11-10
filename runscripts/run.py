@@ -121,3 +121,6 @@ if __name__ == "__main__":
       output += ",{},{}".format(n_away, n_away / max(1, e.numAgents()))
 
     print(output)
+
+  if SimulationSettings.log_levels["evacuation_outcomes"] > 0:
+    e.write_evacuation_outcomes("evacuation_outcomes.csv")

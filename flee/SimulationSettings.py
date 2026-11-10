@@ -123,6 +123,7 @@ class SimulationSettings:
         SimulationSettings.log_levels["conflict"] = int(fetchss(dpll,"conflict",0))
         SimulationSettings.log_levels["idp_totals"] = int(fetchss(dpll,"idp_totals",0))
         SimulationSettings.log_levels["displaced_from_origin"] = int(fetchss(dpll,"displaced_from_origin",0))
+        SimulationSettings.log_levels["evacuation_outcomes"] = int(fetchss(dpll,"evacuation_outcomes",0))
 
         SimulationSettings.log_levels["granularity"] = fetchss(dpll,"granularity","location")
         # location, region
