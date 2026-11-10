@@ -390,28 +390,27 @@ class InputGeography:
         with open(csv_name, newline="", encoding="utf-8") as csvfile:
             values = csv.reader(csvfile)
 
-            i = 0
+            headers = None
             for row in values:
-                if len(row) == 0 or row[0][0] == "#":
-                    pass
-                elif i == 0:
+                # Empty and commented lines are skipped; the first other line is the header.
+                if len(row) == 0 or row[0].startswith("#"):
+                    continue
+                if headers is None:
                     headers = row[1:]
-                    print(headers)
-                else:
-                    print(row)
-                    attr = {}
-                    for i in range (1, len(row)):
-                        attr[headers[i-1]] = row[i]
+                    print("agents.csv attributes:", headers, file=sys.stderr)
+                    continue
+                attr = {}
+                for j in range(1, len(row)):
+                    attr[headers[j-1]] = row[j]
 
-                    loc_found = False
-                    for i in range(0, len(e.locationNames)):
-                        if e.locationNames[i] == row[0]:
-                            e.addAgent(e.locations[i], attributes=attr)
-                            loc_found= True
+                loc_found = False
+                for k in range(0, len(e.locationNames)):
+                    if e.locationNames[k] == row[0]:
+                        e.addAgent(e.locations[k], attributes=attr)
+                        loc_found = True
 
-                    if not loc_found:
-                        print("could not map location to CSV-loaded agent on line. (not count commented lines or empty lines)", sys.stderr)
-                i += 1
+                if not loc_found:
+                    print(f"could not map location {row[0]} of a CSV-loaded agent.", file=sys.stderr)
 
 
     def StoreInputGeographyInEcosystem(self, e):
