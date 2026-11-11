@@ -1,0 +1,4 @@
+#stage,issue_step,locations
+1,1,Flood_A;Flood_B;Flood_C
+2,4,Flood_A;Flood_B;Flood_C
+3,6,Flood_A;Flood_B;Flood_C

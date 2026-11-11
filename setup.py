@@ -50,6 +50,8 @@ setup(
     "purpose-built for simulating the movement of individuals "
     "across geographical locations.",
     install_requires=install_requires,
+    # Optional: the HEC-RAS coupling tool, flee/preprocessing/hecras2dflee (pip install flee[hydro]).
+    extras_require={"hydro": ["h5py", "scipy", "shapely>=2", "geopandas", "rasterio", "pyyaml"]},
     license="BSD-3-Clause",
     long_description=long_description,
     long_description_content_type='text/markdown',

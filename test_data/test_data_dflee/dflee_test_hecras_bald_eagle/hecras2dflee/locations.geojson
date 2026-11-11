@@ -1,0 +1,13 @@
+{
+"type": "FeatureCollection",
+"name": "locations",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::2271" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "Flood_A" }, "geometry": { "type": "Point", "coordinates": [ 2048680.699882220011204, 349257.582554372027516 ] } },
+{ "type": "Feature", "properties": { "name": "Flood_B" }, "geometry": { "type": "Point", "coordinates": [ 2052180.699882220011204, 350257.582554372027516 ] } },
+{ "type": "Feature", "properties": { "name": "Flood_C" }, "geometry": { "type": "Point", "coordinates": [ 2037180.699882220011204, 343257.582554372027516 ] } },
+{ "type": "Feature", "properties": { "name": "Dry_D" }, "geometry": { "type": "Point", "coordinates": [ 2076180.699882220011204, 361257.582554372027516 ] } },
+{ "type": "Feature", "properties": { "name": "Dry_E" }, "geometry": { "type": "Point", "coordinates": [ 2043680.699882220011204, 330257.582554372027516 ] } },
+{ "type": "Feature", "properties": { "name": "Outside_F" }, "geometry": { "type": "Point", "coordinates": [ 2089790.138491299934685, 376007.582554372027516 ] } }
+]
+}

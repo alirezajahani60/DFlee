@@ -1,0 +1,7 @@
+#name,region,country,lat,lon,location_type,conflict_date,population
+Flood_A,A,ABC,1,1,flood_zone,0,2000
+Flood_B,A,ABC,1,1,flood_zone,0,2000
+Flood_C,A,ABC,1,1,flood_zone,0,2000
+Dry_D,A,ABC,1,1,flood_zone,0,500
+Dry_E,A,ABC,1,1,flood_zone,0,500
+Outside_F,A,ABC,1,1,flood_zone,0,500

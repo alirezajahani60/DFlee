@@ -1,0 +1,60 @@
+# Paths are relative to the directory the run is started from (this folder).
+hydro_rules:
+  anticipation:
+    enabled: true
+    horizon: 3
+    strength: 0.8
+  enabled: true
+  entrapment_log: entrapment_V3.csv
+  link_states_file: input_csv/link_states.csv
+  modes:
+    foot:
+      share: 0.7
+    vehicle:
+      share: 0.3
+  warnings:
+    aware_share:
+    - 0.2
+    - 0.5
+    - 0.8
+    evac_prob:
+    - 0.4
+    - 0.6
+    - 0.8
+    file: input_csv/warnings.csv
+log_levels:
+  agent: 0
+  camp: 0
+  flood: 0
+  init: 0
+  link: 0
+move_rules:
+  awareness_level: 1.5
+  flood_rules:
+    flood_loc_weights:
+    - 1.0
+    - 0.1
+    - 0.1
+    - 0.0
+    - 0.0
+    flood_movechances:
+    - 0.0
+    - 0.5
+    - 0.9
+    - 1.0
+    - 1.0
+  max_flood_level: 5
+optimisations:
+  hasten: 1
+spawn_rules:
+  conflict_zone_spawning_only: false
+  flood_driven_spawn_mode:
+    displaced_per_flood_day:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    flood_spawn_mode: pop_ratio
+  flood_zone_spawning_only: true
+  take_from_population: true

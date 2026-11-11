@@ -1,0 +1,7 @@
+#name1,name2,distance,forced_redirection
+Flood_A,Dry_D,9.15,
+Flood_B,Dry_D,8.05,
+Flood_C,Dry_E,4.43,
+Flood_A,Flood_B,1.11,
+Dry_D,Dry_E,13.69,
+Dry_E,Outside_F,19.80,

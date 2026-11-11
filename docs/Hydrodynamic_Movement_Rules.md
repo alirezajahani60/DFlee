@@ -13,7 +13,7 @@ step,name1,name2,mode,accessible,speed_factor
 1,A,B,vehicle,0,0.0
 ```
 
-Links are symmetric. Steps after the last one listed keep the last state; links not listed are open with factor 1. The file can be produced from HEC-RAS 2D results with the `hecras2dflee` tool (https://github.com/alirezajahani60/dflee-hecras-coupling).
+Links are symmetric. Steps after the last one listed keep the last state; links not listed are open with factor 1. The file can be produced from HEC-RAS 2D results with `flee/preprocessing/hecras2dflee` ([Coupling HEC-RAS to DFlee](HEC-RAS_Coupling.md)); `test_data/test_data_dflee/dflee_test_hecras_bald_eagle` is a complete example.
 
 **`warnings.csv`** (optional) lists warning stages, the step at which each is issued and the warned locations (`;`-separated, or `all`):
 

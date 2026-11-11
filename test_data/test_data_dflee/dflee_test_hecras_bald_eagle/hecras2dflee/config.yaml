@@ -1,0 +1,32 @@
+# Test configuration on the HEC-RAS "BaldEagleCrkMulti2D" dam-break example (plan p18, geometry g11).
+# Run from this folder, with the files under data/: the plan HDF from the rashdf test data (https://github.com/fema-ffrd/rashdf,
+# tests/data/ras) and the geometry and terrain from the HEC-RAS example projects (USACE, BaldEagleCrkMulti2D).
+hydraulics:
+  plan_hdf: "data/BaldEagleDamBrk.p18.timeseries.hdf"
+  geometry_hdf: "data/BaldEagleDamBrk.g11.hdf"          # needed only if the plan HDF lacks mesh geometry
+  dem: "data/Terrain/Terrain50.baldeagledem.tif"                   # needed only if neither Depth nor Cells Minimum Elevation is stored
+  flow_areas: [BaldEagleCr]
+simulation:
+  start: "1999-01-01T12:00:00"
+  step_hours: 6
+  n_steps: 12
+links:
+  file: links.geojson
+  sample_spacing: 25          # metres
+  max_impassable_share: 0.0   # any impassable sample closes the link
+  exclude_initially_wet: 0.5  # treat water deeper than this at t0 as the river channel (bridged)
+  modes:
+    foot:
+      criterion: {type: hazard_rating, max_hr: 1.25, debris_factor: 0.0, max_depth: 1.0}
+      speed: {type: dias2021, fit: mean}
+    vehicle:
+      criterion: {type: depth, max_depth: 0.3}
+      speed: {type: pregnolato2017}
+locations:
+  file: locations.geojson
+  statistic: inundated_fraction
+  thresholds: [0.05, 0.25, 0.6]
+  wet_depth: 0.1
+  point_buffer: 400           # metres, used when locations are points
+output:
+  dir: out
