@@ -1,0 +1,80 @@
+# Beledweyne 2019, variant V3: + staged warnings and anticipation (s = 0.1)
+# One step = 6 hours; 304 steps from 1 Oct 2019. Speeds are km per step.
+# k = 0.22 (flood_movechances = 0.22 x the DFlee defaults 0.2/0.5/0.8), calibrated on V0 against PSMN weekly departures.
+# k is refitted once on V0h before the experiments (protocol S1); update flood_movechances here and in all SWEEP variants.
+log_levels:
+  agent: 0
+  camp: 0
+  flood: 0
+  init: 0
+  link: 0
+  evacuation_outcomes: 1
+move_rules:
+  awareness_level: 2
+  camp_movechance: 0.0
+  default_movechance: 0.0
+  flood_rules:
+    flood_loc_weights:
+    - 1.0
+    - 0.5
+    - 0.1
+    - 0.0
+    - 0.0
+    flood_movechances:
+    - 0.0
+    - 0.044
+    - 0.11
+    - 0.176
+    - 0.176
+  max_flood_level: 3
+  max_move_speed: 90.0
+  max_walk_speed: 10.0
+  stay_close_to_home: true
+  home_distance_power: 2.0
+optimisations:
+  hasten: 1
+spawn_rules:
+  conflict_zone_spawning_only: false
+  flood_zone_spawning_only: true
+  take_from_population: true
+  flood_driven_spawn_mode:
+    displaced_per_flood_day:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    flood_spawn_mode: pop_ratio
+  read_from_agents_csv_file: true
+capacity_rules:
+  enabled: true
+  count_en_route: true
+  stay_if_no_room: true
+hydro_rules:
+  enabled: true
+  link_states_file: input_csv/link_states.csv
+  modes:
+    foot:
+      share: 0.09
+    large:
+      share: 0.67
+    small:
+      share: 0.24
+  entrapment_level: 2
+  entrapment_log: entrapment.csv
+  warnings:
+    file: input_csv/warnings.csv
+    evac_prob:
+    - 0.04
+    - 0.06
+    - 0.08
+    aware_share:
+    - 0.2
+    - 0.5
+    - 0.8
+  anticipation:
+    enabled: true
+    horizon: 3
+    strength: 0.8
+    weighting: links
+    forecast_shift: 0
