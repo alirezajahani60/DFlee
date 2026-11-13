@@ -31,6 +31,20 @@ One step is 6 hours: 304 steps cover 1 October to 15 December 2019. The `Date` c
 
 FabSim copies each `SWEEP/<variant>/` folder over the case, so a variant's `input_csv/` files replace those of the base case. **The HEC-RAS files for V0h to V3 are not included yet** (see the README in each variant's `input_csv/`). They derive from the hydraulic model of Ibrahim et al. (2025) and will be added once its authors agree. Until then only V0 runs. To produce them, run `python -m flee.preprocessing.hecras2dflee` on the HEC-RAS plan.
 
+Anticipation (V1A, V3) weights each route by the share of its length that is forecast to be blocked (`hydro_rules.anticipation.weighting: length`, protocol S1 version 1.2); `links` and `time` are the alternatives tested in the anticipation experiment.
+
+## Robustness runs (`robustness/`)
+
+These are not in `SWEEP/`, so `flee_ensemble` does not run them by default. Each is the reference variant with one change:
+
+| Run | Change | How |
+|---|---|---|
+| Shelter cap | The shelter area holds at most 100,000 people (5,000 agents, 1,667 per point) instead of no limit | Copy `robustness/shelter_cap/input_csv/locations.csv` over the variant's `input_csv/` |
+| Start-of-step link states | Each step takes the link states at its first hydraulic output, not the worst state within the step | Produce `link_states.csv` with `links.step_rule: start` in the `hecras2dflee` configuration |
+| Road-surface depth | Depth on the road surface (water surface minus DEM) instead of the cell depth | Produce `link_states.csv` with `links.road_depth: point` and a `dem` |
+
+With the default step rule, the tool's `summary.json` reports `within_step_closures`, the share of closed link-steps that are open at the start of the step.
+
 `flood_movechances` is 0.22 times the DFlee defaults (k = 0.22, calibrated on V0 against the PSMN weekly departures). For V0h to V3, k is refitted once on V0h, and the value goes into every variant's settings.
 
 ## Files
@@ -45,6 +59,7 @@ FabSim copies each `SWEEP/<variant>/` folder over the case, so a variant's `inpu
 | `source_data/` | No camp counts exist for this flood: every location maps to an empty series, so the `data` and `error` columns of `out.csv` are placeholders | |
 | `validation/` | River readings from the 2019 bulletins; instructions for the PSMN data | FAO SWALIM; UNHCR |
 | `simsetting.yml`, `SWEEP/*/simsetting.yml` | Settings per variant | |
+| `robustness/shelter_cap/input_csv/locations.csv` | As `locations.csv`, with the shelter area capped | |
 
 ## How it differs from the other DFlee cases
 

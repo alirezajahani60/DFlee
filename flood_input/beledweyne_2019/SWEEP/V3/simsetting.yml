@@ -76,5 +76,5 @@ hydro_rules:
     enabled: true
     horizon: 3
     strength: 0.8
-    weighting: links
+    weighting: length
     forecast_shift: 0
