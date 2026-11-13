@@ -156,3 +156,22 @@ def test_location_levels_covers_long_narrow_footprint():
     # Ten cell centres lie inside the footprint.
     # Two are wet initially; five are wet from hour 2.
     assert levels["long_narrow"].tolist() == [1, 1, 2, 2]
+
+
+def test_step_rule_start_ignores_a_closure_inside_the_step():
+    t0 = datetime(2020, 1, 1)
+    times = [t0 + timedelta(hours=h) for h in range(12)]
+    xs = np.arange(5.0, 100.0, 10.0)
+    centres = np.c_[xs, np.full_like(xs, 5.0)]
+    depth = np.full((12, len(xs)), 0.1)
+    depth[3, :] = 0.6                                  # deep for one hour, inside the first 6 h step
+    m = MeshResults("a", times, centres, depth, np.zeros_like(depth),
+                    np.array([[0, 0], [100, 0], [100, 10], [0, 10]], float), None, np.zeros(len(xs)))
+    g = gpd.GeoDataFrame(dict(name1=["A"], name2=["B"]), geometry=[LineString([(5, 5), (95, 5)])])
+    modes = {"veh": {"criterion": {"type": "depth", "max_depth": 0.3}, "speed": {"type": "none"}}}
+    worst, _ = link_states(Domain([m]), g, modes, 10.0, t0, 6.0, 2)
+    start, _ = link_states(Domain([m]), g, modes, 10.0, t0, 6.0, 2, step_rule="start")
+    assert [r["accessible"] for r in worst] == [0, 1]
+    assert [r["accessible"] for r in start] == [1, 1]
+    with pytest.raises(ValueError):
+        link_states(Domain([m]), g, modes, 10.0, t0, 6.0, 2, step_rule="mean")

@@ -9,6 +9,7 @@ import sys
 from datetime import datetime
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -79,14 +80,30 @@ def run(cfg: dict) -> dict:
         spacing = float(lc.get("sample_spacing", 25.0))
         if getattr(meshes[0], "centres_units", "m") == "ft":
             spacing = spacing / 0.3048  # spacing given in metres; mesh coordinates in feet
-        rows, closed = link_states(domain, links, lc["modes"], spacing, start, step_h, n_steps,
-                                   float(lc.get("max_impassable_share", 0.0)),
-                                   float(lc.get("percentile", 95)),
-                                   lc.get("exclude_initially_wet"),
-                                   lc.get("bridge_rule"),
-                                   _outside_rule(lc.get("outside_domain"), crs_wkt, model_crs),
-                                   _road_terrain(lc.get("road_depth"), hyd))
+        step_rule = str(lc.get("step_rule", "worst"))
+        largs = (domain, links, lc["modes"], spacing, start, step_h, n_steps,
+                 float(lc.get("max_impassable_share", 0.0)),
+                 float(lc.get("percentile", 95)),
+                 lc.get("exclude_initially_wet"),
+                 lc.get("bridge_rule"),
+                 _outside_rule(lc.get("outside_domain"), crs_wkt, model_crs),
+                 _road_terrain(lc.get("road_depth"), hyd))
+        rows, closed = link_states(*largs, step_rule=step_rule)
         pd.DataFrame(rows).to_csv(os.path.join(out, "link_states.csv"), index=False)
+        summary["step_rule"] = step_rule
+        if step_rule == "worst" and lc.get("within_step_check", True):
+            # what the conservative rule adds: closed link-steps that are open at the start of the step
+            srows, _ = link_states(*largs, step_rule="start")
+            both = pd.DataFrame(rows).merge(pd.DataFrame(srows), on=["step", "name1", "name2", "mode"],
+                                            suffixes=("", "_start"))
+            shut = both.accessible == 0
+            within = shut & (both.accessible_start == 1)
+            dt = np.diff([t.timestamp() for t in domain.times])
+            summary["within_step_closures"] = dict(
+                output_interval_h=float(np.median(dt) / 3600) if len(dt) else None,
+                share_of_closed_link_steps=round(float(within.sum() / max(int(shut.sum()), 1)), 4),
+                by_mode={m: round(float(within[both["mode"] == m].sum() / max(int(shut[both["mode"] == m].sum()), 1)), 4)
+                         for m in lc["modes"]})
         for mode in lc["modes"]:
             crow = closures_from_series(closed, n_steps, mode)
             with open(os.path.join(out, f"closures_{mode}.csv"), "w", newline="") as f:

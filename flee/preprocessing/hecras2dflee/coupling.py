@@ -82,7 +82,7 @@ def _aggregate(values: np.ndarray, k: np.ndarray, n_steps: int, how: str) -> np.
     for s in range(n_steps):
         sel = values[k == s]
         if len(sel):
-            out[s] = sel.min(axis=0) if how == "min" else sel.max(axis=0)
+            out[s] = sel[0] if how == "first" else sel.min(axis=0) if how == "min" else sel.max(axis=0)
     # forward-fill steps without hydraulic output, back-fill leading gaps
     missing = np.isnan(out.reshape(n_steps, -1)[:, 0])
     if missing.all():
@@ -138,8 +138,13 @@ def link_states(domain: Domain, links, modes: dict, spacing: float, start: datet
                 step_hours: float, n_steps: int, max_impassable_share: float = 0.0,
                 percentile: float = 95.0, exclude_initially_wet: float | None = None,
                 bridge_rule: dict | None = None, outside_domain: dict | None = None,
-                road_terrain=None):
+                road_terrain=None, step_rule: str = "worst"):
     """Per-link, per-mode accessibility and speed factor on DFlee steps.
+
+    ``step_rule``: ``"worst"`` (default) closes a link for the whole DFlee step if it is
+    closed at any hydraulic output within it, and takes the lowest speed factor;
+    ``"start"`` takes the state at the first output of the step, as a check on how much
+    the conservative rule adds.
 
     Returns a list of dict rows and a dict of boolean closure arrays keyed by
     (name1, name2, mode).
@@ -163,6 +168,8 @@ def link_states(domain: Domain, links, modes: dict, spacing: float, start: datet
     cell and so overstates depth on a road that runs along higher ground in a
     partly wet cell. Needs the cells' minimum elevations.
     """
+    if step_rule not in ("worst", "start"):
+        raise ValueError(f"step_rule must be 'worst' or 'start', not {step_rule!r}")
     k = step_index(domain.times, start, step_hours, n_steps)
     od = outside_domain or {"type": "open"}
     if od.get("type", "open") not in ("open", "extent"):
@@ -213,18 +220,19 @@ def link_states(domain: Domain, links, modes: dict, spacing: float, start: datet
         v = np.hstack([domain.speed[:, idx[inside]], np.zeros_like(d_out)])
         if d.shape[1] == 0:                      # only the crossing itself is tested
             d = np.zeros((len(domain.times), 1)); v = np.zeros_like(d)
-        dp = _aggregate(np.percentile(d, percentile, axis=1)[:, None], k, n_steps, "max")[:, 0]
-        vp = _aggregate(np.percentile(v, percentile, axis=1)[:, None], k, n_steps, "max")[:, 0]
-        bridge_s = _aggregate(bridge_shut.astype(float)[:, None], k, n_steps, "max")[:, 0] > 0.5
+        hi, lo = ("max", "min") if step_rule == "worst" else ("first", "first")
+        dp = _aggregate(np.percentile(d, percentile, axis=1)[:, None], k, n_steps, hi)[:, 0]
+        vp = _aggregate(np.percentile(v, percentile, axis=1)[:, None], k, n_steps, hi)[:, 0]
+        bridge_s = _aggregate(bridge_shut.astype(float)[:, None], k, n_steps, hi)[:, 0] > 0.5
         for mode, spec in modes.items():
             sf = spec.get("speed", {"type": "none"})
             ok = passable(d, v, spec["criterion"])                    # (T, S)
             ok_t = ((1.0 - ok.mean(axis=1)) <= max_impassable_share) & ~bridge_shut    # (T,)
             # a speed function that reaches zero (e.g. Pregnolato closure depth) also closes the link
             ok_t &= ~speed_closed(np.percentile(d, percentile, axis=1), sf, np.percentile(v, percentile, axis=1))
-            ok_s = _aggregate(ok_t.astype(float)[:, None], k, n_steps, "min")[:, 0] > 0.5
+            ok_s = _aggregate(ok_t.astype(float)[:, None], k, n_steps, lo)[:, 0] > 0.5
             g = speed_factor(np.percentile(d, percentile, axis=1), sf, np.percentile(v, percentile, axis=1))
-            g_s = _aggregate(g[:, None], k, n_steps, "min")[:, 0]
+            g_s = _aggregate(g[:, None], k, n_steps, lo)[:, 0]
             g_s = np.where(ok_s, g_s, 0.0)
             closed[(link.name1, link.name2, mode)] = ~ok_s
             for s in range(n_steps):
