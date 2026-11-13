@@ -2076,7 +2076,8 @@ class Ecosystem:
         Summary:
             Per agent, records the first step it left home, the first step its home
             location was at or above the unsafe flood level, and the first step at
-            which, with its home unsafe, it stood at a location below that level.
+            which, with its home unsafe, it stood at a location below that level, and the
+            first later step at which it stood at an unsafe location again (re-exposure).
             Called at the end of each step when log_levels.evacuation_outcomes > 0.
             The unsafe level is hydro_rules.entrapment_level if set, otherwise 2.
 
@@ -2095,14 +2096,17 @@ class Ecosystem:
                 continue
             rec = self.evac_outcomes.get(id(a))
             if rec is None:
-                rec = self.evac_outcomes[id(a)] = [a, -1, -1, -1]  # agent, departed, home unsafe from, safe at
+                rec = self.evac_outcomes[id(a)] = [a, -1, -1, -1, -1]  # agent, departed, home unsafe from, safe at, re-exposed at
             home_unsafe = a.home_location.attributes.get("flood_level", 0) >= unsafe
             if rec[1] < 0 and (a.travelling or a.location is not a.home_location):
                 rec[1] = t
             if rec[2] < 0 and home_unsafe:
                 rec[2] = t
-            if rec[3] < 0 and home_unsafe and not a.travelling and a.location.attributes.get("flood_level", 0) < unsafe:
+            here = a.location.attributes.get("flood_level", 0) if not a.travelling else None
+            if rec[3] < 0 and home_unsafe and here is not None and here < unsafe:
                 rec[3] = t
+            elif rec[3] >= 0 and rec[4] < 0 and t > rec[3] and here is not None and here >= unsafe:
+                rec[4] = t
 
 
     def write_evacuation_outcomes(self, path: str, prefix: str = "") -> None:
@@ -2110,9 +2114,10 @@ class Ecosystem:
         Summary:
             Writes one row per agent tracked by track_evacuation_outcomes():
             agent, home, current (or destination if travelling), travelling, travel mode
-            (hydro rules only), departed_step, home_unsafe_step, safe_step (-1 = never).
-            An agent is exposed if home_unsafe_step >= 0, and has failed to evacuate if it
-            is exposed and safe_step = -1.
+            (hydro rules only), departed_step, home_unsafe_step, safe_step, reexposed_step
+            (-1 = never). An agent is exposed if home_unsafe_step >= 0, has failed to evacuate
+            if it is exposed and safe_step = -1, and was re-exposed if it reached safety and
+            reexposed_step >= 0.
 
         Args:
             path (str): output CSV file.
@@ -2123,14 +2128,14 @@ class Ecosystem:
         """
         recs = getattr(self, "evac_outcomes", {})
         with open(path, "w") as f:
-            f.write("agent,home,location,travelling,mode,departed_step,home_unsafe_step,safe_step\n")
-            for i, (a, dep, unsafe_from, safe) in enumerate(recs.values()):
+            f.write("agent,home,location,travelling,mode,departed_step,home_unsafe_step,safe_step,reexposed_step\n")
+            for i, (a, dep, unsafe_from, safe, reexp) in enumerate(recs.values()):
                 if a.location is None:
                     where = ""
                 else:
                     where = a.location.endpoint.name if a.travelling else a.location.name
                 mode = hydro.get().mode(a) if hydro.enabled() else ""
-                f.write(f"{prefix}{i},{a.home_location.name},{where},{int(bool(a.travelling))},{mode},{dep},{unsafe_from},{safe}\n")
+                f.write(f"{prefix}{i},{a.home_location.name},{where},{int(bool(a.travelling))},{mode},{dep},{unsafe_from},{safe},{reexp}\n")
 
 
     @check_args_type

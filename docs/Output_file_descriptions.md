@@ -41,8 +41,9 @@ Written with `log_levels: evacuation_outcomes: 1`, one row per agent, for flood 
 | `departed_step` | First step the agent left home (-1: never). |
 | `home_unsafe_step` | First step its home was unsafe (-1: never; the agent was not exposed). |
 | `safe_step` | First step at which, with its home unsafe, it stood at a safe location (-1: never). |
+| `reexposed_step` | First step after `safe_step` at which it stood at an unsafe location again, e.g. a destination that flooded after it arrived (-1: never). |
 
-`python -m flee.postprocessing.evacuation_outcomes <run_dir> --steps-per-day 4 [--entrapment <log>]` reports, overall and per travel mode, the exposed agents, the evacuation failure (exposed agents that never reached safety) and the median and 90th percentile time to safety, with the peaks of the entrapment log if given.
+`python -m flee.postprocessing.evacuation_outcomes <run_dir> --steps-per-day 4 [--entrapment <log>]` reports, overall and per travel mode, the exposed agents, the evacuation failure (exposed agents that never reached safety), the re-exposure (exposed agents that reached safety and later stood at an unsafe location again) and the median and 90th percentile time to safety, with the peaks of the entrapment log if given.
 
 ---
 

@@ -35,6 +35,29 @@ def test_tracking_records_departure_exposure_and_safety(tmp_path):
     assert s["exposed"] == 2 and s["departed"] == 1
     assert s["evacuation_failure"] == pytest.approx(0.5)
     assert s["time_to_safety_h_median"] == pytest.approx(6.0)   # one 6 h step after the home flooded
+    assert s["reexposed"] == 0.0
+
+
+def test_reexposure_when_the_refuge_floods(tmp_path):
+    flee.SimulationSettings.ReadFromYML("empty.yml")
+    flee.SimulationSettings.log_levels["evacuation_outcomes"] = 1
+    e = flee.Ecosystem()
+    a = e.addLocation(name="A", movechance=0.0, attributes={})
+    b = e.addLocation(name="B", movechance=0.0, attributes={})
+    e.linkUp(endpoint1="A", endpoint2="B", distance=10.0)
+    e.addAgent(location=a, attributes={})
+    a.attributes["flood_level"] = 2
+    e.track_evacuation_outcomes()                 # t = 0: home unsafe
+    e.time = 1
+    e.agents[0].handle_travel(b, travelling=False)
+    e.track_evacuation_outcomes()                 # t = 1: safe at B
+    e.time = 2
+    b.attributes["flood_level"] = 3               # the refuge floods
+    e.track_evacuation_outcomes()
+    e.write_evacuation_outcomes(str(tmp_path / "evacuation_outcomes.csv"))
+    s = eo.summarise(str(tmp_path), steps_per_day=4)["all"]
+    assert s["evacuation_failure"] == 0.0         # it did reach safety
+    assert s["reexposed"] == 1.0
 
 
 def _run_case(variant, tmp_path):

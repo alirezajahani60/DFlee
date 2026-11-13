@@ -12,7 +12,9 @@ Definitions (unsafe = flood level >= hydro_rules.entrapment_level, default 2):
 - evacuation failure: share of exposed agents that never stand at a safe location
   while their home is unsafe;
 - time to safety: steps from the home becoming unsafe to the agent standing at a
-  safe location (0 if it had left before), for the exposed agents that reach safety.
+  safe location (0 if it had left before), for the exposed agents that reach safety;
+- re-exposure: share of exposed agents that reach safety and later stand at an unsafe
+  location again, e.g. a destination that floods after they arrive.
 """
 from __future__ import annotations
 
@@ -40,6 +42,8 @@ def _failure_and_time(df: pd.DataFrame, hours_per_step: float) -> dict:
         return out
     ok = ex[ex.safe_step >= 0]
     out["evacuation_failure"] = float((ex.safe_step < 0).mean())
+    if "reexposed_step" in ex.columns:
+        out["reexposed"] = float(((ex.safe_step >= 0) & (ex.reexposed_step >= 0)).mean())
     if len(ok):
         tts = np.maximum(ok.safe_step - ok.home_unsafe_step, 0) * hours_per_step
         out["time_to_safety_h_median"] = float(np.median(tts))
